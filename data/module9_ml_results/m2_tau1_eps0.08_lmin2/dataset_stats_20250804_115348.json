@@ -1,0 +1,85 @@
+{
+  "total_samples": 60,
+  "train_samples": 48,
+  "test_samples": 12,
+  "feature_count": 10,
+  "target_count": 5,
+  "group_distribution": {
+    "ad": 20,
+    "mci": 20,
+    "control": 20
+  },
+  "feature_names": [
+    "eye_coeff_mean",
+    "eye_coeff_std",
+    "eye_coeff_min",
+    "eye_coeff_max",
+    "task_count",
+    "eye_coeff_q1",
+    "eye_coeff_q2",
+    "eye_coeff_q3",
+    "eye_coeff_q4",
+    "eye_coeff_q5"
+  ],
+  "target_names": [
+    "Q1_subscore",
+    "Q2_subscore",
+    "Q3_subscore",
+    "Q4_subscore",
+    "Q5_subscore"
+  ],
+  "target_stats": {
+    "Q1_subscore": {
+      "mean": 4.966666666666667,
+      "std": 1.9394798067791155,
+      "min": 1.0,
+      "max": 7.0
+    },
+    "Q2_subscore": {
+      "mean": 6.25,
+      "std": 1.083387656178213,
+      "min": 3.0,
+      "max": 7.0
+    },
+    "Q3_subscore": {
+      "mean": 8.45,
+      "std": 1.170614788498269,
+      "min": 6.0,
+      "max": 9.0
+    },
+    "Q4_subscore": {
+      "mean": 2.95,
+      "std": 1.3830082662105745,
+      "min": 0.0,
+      "max": 5.0
+    },
+    "Q5_subscore": {
+      "mean": 1.6166666666666667,
+      "std": 1.0906640282868367,
+      "min": 0.0,
+      "max": 3.0
+    }
+  },
+  "direction_validation": {
+    "correlations": {
+      "eye_coeff_mean": 0.7920721979839402,
+      "eye_coeff_std": 0.25007886443007177,
+      "eye_coeff_min": 0.6736636004477582,
+      "eye_coeff_max": 0.7475325863045581,
+      "task_count": NaN,
+      "eye_coeff_q1": 0.6367287737412911,
+      "eye_coeff_q2": 0.6244816926664516,
+      "eye_coeff_q3": 0.6750365793561499,
+      "eye_coeff_q4": 0.7476678800372649,
+      "eye_coeff_q5": 0.5941344801505817
+    },
+    "negative_features": [],
+    "all_positive": true,
+    "mmse_total_stats": {
+      "mean": 24.233333333333334,
+      "std": 4.910613433552402,
+      "min": 12.0,
+      "max": 31.0
+    }
+  }
+}

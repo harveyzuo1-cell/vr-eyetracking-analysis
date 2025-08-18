@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR眼动数据可视化系统</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-bg: #ecf0f1;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-bg);
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .btn-custom {
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        
+        .group-card {
+            cursor: pointer;
+            border-left: 5px solid;
+        }
+        
+        .group-card.control {
+            border-left-color: #28a745;
+        }
+        
+        .group-card.mci {
+            border-left-color: #ffc107;
+        }
+        
+        .group-card.ad {
+            border-left-color: #dc3545;
+        }
+        
+        .visualization-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .stats-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+        }
+        
+        .stats-item {
+            text-align: center;
+            padding: 15px;
+        }
+        
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .data-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .data-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 8px;
+            margin: 2px 0;
+        }
+        
+        .data-item:hover {
+            background-color: var(--light-bg);
+            transform: translateX(5px);
+        }
+        
+        .data-item.active {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--secondary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .roi-legend {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 2px 0;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-eye"></i>
+                VR眼动数据可视化系统
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text">
+                    <i class="bi bi-activity"></i>
+                    实时分析平台
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- 研究组概览 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-people"></i>
+                            研究组概览
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="groupsContainer">
+                            <!-- 动态加载组信息 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要工作区 -->
+        <div class="row">
+            <!-- 左侧面板 - 数据选择 -->
+            <div class="col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-list-ul"></i>
+                            数据选择
+                            <span class="badge bg-secondary ms-2" id="selectedGroupBadge">请选择组</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="dataListContainer">
+                            <div class="text-center text-muted">
+                                <i class="bi bi-arrow-up"></i>
+                                <p>请先选择一个研究组</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 统计信息面板 -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-graph-up"></i>
+                            统计信息
+                        </h6>
+                    </div>
+                    <div class="card-body stats-panel">
+                        <div class="row" id="statisticsContainer">
+                            <div class="col-4 stats-item">
+                                <span class="stats-number" id="totalFiles">0</span>
+                                <span class="stats-label">总文件数</span>
+                            </div>
+                            <div class="col-4 stats-item">
+                                <span class="stats-number" id="totalQuestions">0</span>
+                                <span class="stats-label">问题数</span>
+                            </div>
+                            <div class="col-4 stats-item">
+                                <span class="stats-number" id="totalGroups">0</span>
+                                <span class="stats-label">组数</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧面板 - 可视化区域 -->
+            <div class="col-lg-8 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-graph-up"></i>
+                            眼动轨迹可视化
+                        </h6>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary btn-custom" id="downloadBtn" disabled>
+                                <i class="bi bi-download"></i>
+                                下载图像
+                            </button>
+                            <button class="btn btn-sm btn-outline-success btn-custom" id="refreshBtn" disabled>
+                                <i class="bi bi-arrow-clockwise"></i>
+                                刷新
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="visualization-container" id="visualizationContainer">
+                            <div class="text-center text-muted">
+                                <i class="bi bi-eye" style="font-size: 4rem; opacity: 0.3;"></i>
+                                <h5 class="mt-3">眼动轨迹可视化</h5>
+                                <p>选择数据文件开始分析</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROI统计信息 -->
+                <div class="card mt-3" id="roiStatsCard" style="display: none;">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-bullseye"></i>
+                            ROI分析结果
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="roiStatsTable">
+                                <thead>
+                                    <tr>
+                                        <th>ROI区域</th>
+                                        <th>总时间(ms)</th>
+                                        <th>访问次数</th>
+                                        <th>固视次数</th>
+                                        <th>时间占比</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="roiStatsBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 全局变量
+        let currentGroup = null;
+        let currentData = null;
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGroups();
+            setupEventListeners();
+        });
+
+        // 加载研究组信息
+        async function loadGroups() {
+            try {
+                const response = await fetch('/api/groups');
+                const groups = await response.json();
+                displayGroups(groups);
+            } catch (error) {
+                console.error('加载组信息失败:', error);
+                showError('无法加载组信息');
+            }
+        }
+
+        // 显示研究组
+        function displayGroups(groups) {
+            const container = document.getElementById('groupsContainer');
+            container.innerHTML = '';
+
+            for (const [groupType, groupInfo] of Object.entries(groups)) {
+                const groupCard = document.createElement('div');
+                groupCard.className = 'col-md-4 mb-3';
+                groupCard.innerHTML = `
+                    <div class="card group-card ${groupType}" onclick="selectGroup('${groupType}')">
+                        <div class="card-body text-center">
+                            <h5 class="card-title" style="color: ${groupInfo.color}">
+                                ${groupInfo.name}
+                            </h5>
+                            <p class="card-text">${groupInfo.description}</p>
+                            <div class="badge bg-light text-dark">
+                                ${groupInfo.data_count} 个文件
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(groupCard);
+            }
+        }
+
+        // 选择研究组
+        async function selectGroup(groupType) {
+            currentGroup = groupType;
+            
+            // 更新UI状态
+            document.getElementById('selectedGroupBadge').textContent = getGroupName(groupType);
+            document.getElementById('selectedGroupBadge').className = `badge bg-${getGroupColor(groupType)} ms-2`;
+            
+            // 高亮选中的组
+            document.querySelectorAll('.group-card').forEach(card => {
+                card.style.opacity = '0.6';
+            });
+            document.querySelector(`.group-card.${groupType}`).style.opacity = '1';
+            
+            // 加载组数据
+            await loadGroupData(groupType);
+            await loadGroupStatistics(groupType);
+        }
+
+        // 加载组数据列表
+        async function loadGroupData(groupType) {
+            try {
+                const response = await fetch(`/api/group/${groupType}/data`);
+                const dataList = await response.json();
+                displayDataList(dataList);
+            } catch (error) {
+                console.error('加载数据列表失败:', error);
+                showError('无法加载数据列表');
+            }
+        }
+
+        // 显示数据列表
+        function displayDataList(dataList) {
+            const container = document.getElementById('dataListContainer');
+            
+            if (dataList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="bi bi-inbox"></i>
+                        <p>该组暂无数据</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="data-list">
+                    ${dataList.map(item => `
+                        <div class="data-item p-2" onclick="selectData('${item.data_id}')">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>${item.display_name}</span>
+                                <small class="text-muted">${item.filename}</small>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // 选择数据文件
+        async function selectData(dataId) {
+            currentData = dataId;
+            
+            // 高亮选中的数据项
+            document.querySelectorAll('.data-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // 生成可视化
+            await generateVisualization(currentGroup, dataId);
+        }
+
+        // 生成可视化
+        async function generateVisualization(groupType, dataId) {
+            const container = document.getElementById('visualizationContainer');
+            
+            // 显示加载状态
+            container.innerHTML = `
+                <div class="text-center">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-3">正在生成可视化...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/visualize/${groupType}/${dataId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayVisualization(result);
+                    displayROIStatistics(result.roi_statistics);
+                    enableActionButtons();
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('生成可视化失败:', error);
+                showError('可视化生成失败: ' + error.message);
+            }
+        }
+
+        // 显示可视化结果
+        function displayVisualization(result) {
+            const container = document.getElementById('visualizationContainer');
+            container.innerHTML = `
+                <div class="position-relative w-100">
+                    <img src="${result.image}" class="img-fluid rounded" alt="眼动轨迹可视化">
+                    <div class="roi-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: blue;"></div>
+                            <span>固视点</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: red;"></div>
+                            <span>扫视点</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: green;"></div>
+                            <span>起始点</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: orange;"></div>
+                            <span>结束点</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 显示ROI统计信息
+        function displayROIStatistics(roiStats) {
+            const card = document.getElementById('roiStatsCard');
+            const tbody = document.getElementById('roiStatsBody');
+            
+            if (!roiStats || Object.keys(roiStats).length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            for (const [roiName, stats] of Object.entries(roiStats)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${roiName}</strong></td>
+                    <td>${stats.total_time.toFixed(1)}</td>
+                    <td>${stats.visit_count}</td>
+                    <td>${stats.fixation_count}</td>
+                    <td>${stats.time_percentage.toFixed(1)}%</td>
+                `;
+                tbody.appendChild(row);
+            }
+            
+            card.style.display = 'block';
+        }
+
+        // 加载组统计信息
+        async function loadGroupStatistics(groupType) {
+            try {
+                const response = await fetch(`/api/statistics/${groupType}`);
+                const stats = await response.json();
+                displayStatistics(stats);
+            } catch (error) {
+                console.error('加载统计信息失败:', error);
+            }
+        }
+
+        // 显示统计信息
+        function displayStatistics(stats) {
+            document.getElementById('totalFiles').textContent = stats.total_files || 0;
+            document.getElementById('totalQuestions').textContent = Object.keys(stats.questions || {}).length;
+            document.getElementById('totalGroups').textContent = Object.keys(stats.groups || {}).length;
+        }
+
+        // 启用操作按钮
+        function enableActionButtons() {
+            document.getElementById('downloadBtn').disabled = false;
+            document.getElementById('refreshBtn').disabled = false;
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            document.getElementById('refreshBtn').addEventListener('click', function() {
+                if (currentGroup && currentData) {
+                    generateVisualization(currentGroup, currentData);
+                }
+            });
+
+            document.getElementById('downloadBtn').addEventListener('click', function() {
+                const img = document.querySelector('#visualizationContainer img');
+                if (img) {
+                    const link = document.createElement('a');
+                    link.download = `eyetracking_${currentData}.png`;
+                    link.href = img.src;
+                    link.click();
+                }
+            });
+        }
+
+        // 获取组名称
+        function getGroupName(groupType) {
+            const names = {
+                'control': '对照组',
+                'mci': 'MCI组', 
+                'ad': 'AD组'
+            };
+            return names[groupType] || groupType;
+        }
+
+        // 获取组颜色
+        function getGroupColor(groupType) {
+            const colors = {
+                'control': 'success',
+                'mci': 'warning',
+                'ad': 'danger'
+            };
+            return colors[groupType] || 'secondary';
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            const container = document.getElementById('visualizationContainer');
+            container.innerHTML = `
+                <div class="text-center text-danger">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">错误</h5>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html> 

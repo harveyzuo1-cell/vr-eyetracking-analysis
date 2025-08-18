@@ -1,0 +1,297 @@
+<!-- 数据可视化模块 - 独立文件 -->
+<div class="visualization-view" id="visualizationView">
+    <div class="row">
+        <div class="col-lg-5">
+            <div class="left-panel">
+                <div class="left-panel-content">
+                    <!-- Group Stats Section -->
+                    <div class="stats-section">
+                        <div class="section-title">
+                            <i class="fas fa-users"></i>
+                            <span data-lang-key="researchGroups">研究组别</span>
+                        </div>
+                        <div class="group-stats-grid">
+                            <div class="group-stat-card" data-group="control">
+                                <div class="group-card-content">
+                                    <div class="group-card-icon">
+                                        <i class="fas fa-user-check"></i>
+                                    </div>
+                                    <div class="group-card-text">
+                                        <div class="group-card-title" data-lang-key="controlGroup">健康对照组</div>
+                                        <div class="group-card-count" id="control-count-text" data-lang-key-template="loading">加载中...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="group-stat-card" data-group="mci">
+                                <div class="group-card-content">
+                                    <div class="group-card-icon">
+                                        <i class="fas fa-user-friends"></i>
+                                    </div>
+                                    <div class="group-card-text">
+                                        <div class="group-card-title" data-lang-key="mciGroup">轻度认知障碍组</div>
+                                        <div class="group-card-count" id="mci-count-text" data-lang-key-template="loading">加载中...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="group-stat-card" data-group="ad">
+                                <div class="group-card-content">
+                                    <div class="group-card-icon">
+                                        <i class="fas fa-user-injured"></i>
+                                    </div>
+                                    <div class="group-card-text">
+                                        <div class="group-card-title" data-lang-key="adGroup">阿尔茨海默组</div>
+                                        <div class="group-card-count" id="ad-count-text" data-lang-key-template="loading">加载中...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Filter Section -->
+                    <div class="filter-section">
+                        <div class="section-title">
+                            <i class="fas fa-filter"></i>
+                            <span data-lang-key="taskFilter">任务过滤</span>
+                        </div>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-question="all" data-lang-key="all">全部</button>
+                            <button class="filter-btn" data-question="1" data-lang-key="task1">任务1</button>
+                            <button class="filter-btn" data-question="2" data-lang-key="task2">任务2</button>
+                            <button class="filter-btn" data-question="3" data-lang-key="task3">任务3</button>
+                            <button class="filter-btn" data-question="4" data-lang-key="task4">任务4</button>
+                            <button class="filter-btn" data-question="5" data-lang-key="task5">任务5</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Data List Section -->
+                    <div class="data-list-section">
+                        <div class="section-title">
+                            <i class="fas fa-list"></i>
+                            <span data-lang-key="dataList">数据列表</span>
+                        </div>
+                        <div class="data-list" id="dataList">
+                            <div class="loading-text">
+                                <i class="fas fa-spinner fa-spin"></i> <span data-lang-key="loading">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bottom Actions -->
+                    <div class="bottom-actions">
+                        <button class="action-btn restart" onclick="restartServer()">
+                            <i class="fas fa-redo"></i>
+                            <span data-lang-key="restart">重启</span>
+                        </button>
+                        <button class="action-btn refresh" onclick="refreshData()">
+                            <i class="fas fa-sync"></i>
+                            <span data-lang-key="refresh">刷新</span>
+                        </button>
+                    </div>
+                </div> <!-- /left-panel-content -->
+            </div>
+        </div>
+        
+        <div class="col-lg-7">
+            <div class="right-panel visualization-container">
+                <!-- Placeholder Message -->
+                <div class="placeholder-message" id="placeholderMessage">
+                    <div class="icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="title" data-lang-key="selectDataTitle">选择数据开始分析</div>
+                    <div class="subtitle" data-lang-key="selectDataSubtitle">点击左侧的数据项来生成专业的眼动轨迹可视化分析</div>
+                </div>
+                
+                <!-- Visualization Panel -->
+                <div class="visualization-panel" id="visualizationPanel">
+                    <h3><i class="fas fa-chart-line"></i> <span data-lang-key="eyeTrackingVis">眼动轨迹可视化</span></h3>
+                    
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <h5><i class="fas fa-sliders-h"></i> <span data-lang-key="visControls">可视化控制</span></h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="control-group">
+                                    <label for="fixationSize" data-lang-key="fixationSize">注视点大小:</label>
+                                    <input type="range" class="form-range" id="fixationSize" min="1" max="10" value="3">
+                                    <span id="fixationSizeValue">3</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="control-group">
+                                    <label for="trajectoryWidth" data-lang-key="trajectoryWidth">轨迹线宽:</label>
+                                    <input type="range" class="form-range" id="trajectoryWidth" min="1" max="8" value="2">
+                                    <span id="trajectoryWidthValue">2</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="control-group">
+                                    <label for="pointSize" data-lang-key="pointSize">数据点大小:</label>
+                                    <input type="range" class="form-range" id="pointSize" min="1" max="8" value="1">
+                                    <span id="pointSizeValue">1</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="control-group">
+                                    <label for="trajectoryStyle" data-lang-key="trajectoryStyle">轨迹样式:</label>
+                                    <select class="form-select" id="trajectoryStyle">
+                                        <option value="solid" data-lang-key="solidLine">实线</option>
+                                        <option value="dashed" data-lang-key="dashedLine">虚线</option>
+                                        <option value="dotted" data-lang-key="dottedLine">点线</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="visualization-actions">
+                            <button class="btn btn-success" onclick="updateVisualization()">
+                                <i class="fas fa-sync-alt"></i> <span data-lang-key="updateVis">更新可视化</span>
+                            </button>
+                            <button class="btn btn-warning" id="editCalibrationBtn" onclick="enterEditMode()" style="display: inline-block;">
+                                <i class="fas fa-edit"></i> <span data-lang-key="editCalibration">校准编辑</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Calibration Panel -->
+                    <div class="calibration-panel" id="calibrationPanel">
+                        <h4><i class="fas fa-crosshairs"></i> <span data-lang-key="calibrationEdit">校准编辑模式</span></h4>
+                        <p class="mb-3" data-lang-key="calibrationDesc">调整当前数据的偏移量，实时预览校准效果</p>
+                        
+                        <!-- Current Data Info -->
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle"></i>
+                            <span data-lang-key="currentData">当前数据:</span> <strong id="currentDataInfo">未选择</strong>
+                        </div>
+                        
+                        <!-- Calibration Controls -->
+                        <div class="calibration-controls">
+                            <div class="calibration-control">
+                                <label for="xOffset" data-lang-key="xOffset">X轴偏移</label>
+                                <input type="range" class="form-range calibration-slider" id="xOffset" 
+                                       min="-0.5" max="0.5" step="0.01" value="0" 
+                                       oninput="updateCalibrationPreview()">
+                                <span class="calibration-value" id="xOffsetValue">0.00</span>
+                            </div>
+                            <div class="calibration-control">
+                                <label for="yOffset" data-lang-key="yOffset">Y轴偏移</label>
+                                <input type="range" class="form-range calibration-slider" id="yOffset" 
+                                       min="-0.5" max="0.5" step="0.01" value="0" 
+                                       oninput="updateCalibrationPreview()">
+                                <span class="calibration-value" id="yOffsetValue">0.00</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Time Range Controls -->
+                        <div class="time-calibration-section">
+                            <h5><i class="fas fa-clock"></i> <span data-lang-key="timeCalibration">时间校准</span></h5>
+                            <p class="time-desc" data-lang-key="timeCalibrationDesc">调整数据的时间范围，控制轨迹的起始和结束点</p>
+                            
+                            <!-- Time Info Display -->
+                            <div class="time-info" id="timeInfo">
+                                <div class="time-stat">
+                                    <span data-lang-key="totalDuration">总时长:</span> 
+                                    <strong id="totalDuration">--</strong>
+                                </div>
+                                <div class="time-stat">
+                                    <span data-lang-key="dataPoints">数据点:</span> 
+                                    <strong id="totalDataPoints">--</strong>
+                                </div>
+                                <div class="time-stat">
+                                    <span data-lang-key="selectedRange">选择范围:</span> 
+                                    <strong id="selectedRange">--</strong>
+                                </div>
+                            </div>
+                            
+                            <!-- Time Range Sliders -->
+                            <div class="time-controls">
+                                <div class="time-control">
+                                    <label for="startTime" data-lang-key="startTime">起始时间</label>
+                                    <input type="range" class="form-range time-slider" id="startTime" 
+                                           min="0" max="100" step="1" value="0" 
+                                           oninput="updateTimeRange()">
+                                    <span class="time-value" id="startTimeValue">0.0s</span>
+                                </div>
+                                <div class="time-control">
+                                    <label for="endTime" data-lang-key="endTime">结束时间</label>
+                                    <input type="range" class="form-range time-slider" id="endTime" 
+                                           min="0" max="100" step="1" value="100" 
+                                           oninput="updateTimeRange()">
+                                    <span class="time-value" id="endTimeValue">100%</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Time Presets -->
+                            <div class="time-presets">
+                                <small class="text-muted" data-lang-key="timePresets">时间预设:</small>
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-info me-2" onclick="applyTimePreset(0, 100)">
+                                        <span data-lang-key="fullRange">完整</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info me-2" onclick="applyTimePreset(10, 90)">
+                                        <span data-lang-key="trimEdges">去边缘</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info me-2" onclick="applyTimePreset(0, 50)">
+                                        <span data-lang-key="firstHalf">前半段</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" onclick="applyTimePreset(50, 100)">
+                                        <span data-lang-key="secondHalf">后半段</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Preset Buttons -->
+                        <div class="preset-buttons">
+                            <small class="text-muted" data-lang-key="presetOffsets">常用偏移量:</small>
+                            <div class="preset-button-grid">
+                                <button class="btn btn-outline-warning preset-btn" onclick="applyPresetOffset(0, 0)">
+                                    <span data-lang-key="reset">重置</span>
+                                </button>
+                                <button class="btn btn-outline-warning preset-btn" onclick="applyPresetOffset(-0.03, -0.14)">
+                                    默认校准
+                                </button>
+                                <button class="btn btn-outline-warning preset-btn" onclick="applyPresetOffset(0.05, -0.1)">
+                                    微调1
+                                </button>
+                                <button class="btn btn-outline-warning preset-btn" onclick="applyPresetOffset(-0.1, 0.05)">
+                                    微调2
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="calibration-actions">
+                            <button class="btn btn-secondary" onclick="exitEditMode()">
+                                <i class="fas fa-times"></i> <span data-lang-key="cancel">取消</span>
+                            </button>
+                            <button class="btn btn-primary" onclick="previewCalibration()">
+                                <i class="fas fa-eye"></i> <span data-lang-key="preview">预览</span>
+                            </button>
+                            <button class="btn btn-success" onclick="saveCalibration()">
+                                <i class="fas fa-save"></i> <span data-lang-key="save">保存校准</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading Spinner -->
+                    <div class="loading-spinner" id="loadingSpinner">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden" data-lang-key="loading">加载中...</span>
+                        </div>
+                        <p class="mt-3" data-lang-key="generatingVis">正在生成可视化...</p>
+                    </div>
+
+                    <!-- Image Container -->
+                    <div class="image-container" id="imageContainer">
+                        <!-- Visualization image will be displayed here -->
+                    </div>
+
+                    <!-- Statistics Panel -->
+                    <div class="stats-panel" id="statsPanel">
+                        <!-- Statistics will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> <!-- 结束 visualization-view -->

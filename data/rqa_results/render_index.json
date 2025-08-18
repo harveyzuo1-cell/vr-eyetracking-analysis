@@ -1,0 +1,36 @@
+{
+  "params": {
+    "analysis_mode": "2d_xy",
+    "distance_metric": "euclidean",
+    "embedding_dimension": 2,
+    "time_delay": 1,
+    "recurrence_threshold": 0.05,
+    "min_line_length": 2
+  },
+  "color_theme": "green_gradient",
+  "param_signature": "mode_2dxy_metric_eucl_m2_tau1_eps0.05_lmin2_green",
+  "render_time": "2025-07-27T22:37:46.882093",
+  "params_display": {
+    "analysis_mode_display": "2D信号(X,Y坐标)",
+    "distance_metric_display": "欧几里得距离",
+    "color_theme_display": "墨绿色渐变"
+  },
+  "results_summary": {
+    "total_files": 0,
+    "groups": [
+      "control",
+      "mci",
+      "ad"
+    ],
+    "questions": [
+      "q1",
+      "q2",
+      "q3",
+      "q4",
+      "q5"
+    ],
+    "control": {},
+    "mci": {},
+    "ad": {}
+  }
+}

@@ -1,0 +1,108 @@
+.question-filter {
+  margin-bottom: 16px;
+}
+
+.filter-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.question-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.question-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 50px;
+  position: relative;
+}
+
+.question-option:hover {
+  background: #f3f4f6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.question-option.active {
+  background: white;
+  border-color: var(--question-color);
+  color: var(--question-color);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+
+.question-option i {
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #6b7280;
+  transition: color 0.3s ease;
+}
+
+.question-option.active i {
+  color: var(--question-color);
+}
+
+.question-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+.question-option.active .question-label {
+  color: var(--question-color);
+  font-weight: 600;
+}
+
+/* 数字图标特殊处理 */
+.question-option .fa-1::before { content: "1"; }
+.question-option .fa-2::before { content: "2"; }
+.question-option .fa-3::before { content: "3"; }
+.question-option .fa-4::before { content: "4"; }
+.question-option .fa-5::before { content: "5"; }
+
+.question-option .fa-1,
+.question-option .fa-2,
+.question-option .fa-3,
+.question-option .fa-4,
+.question-option .fa-5 {
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .question-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .question-option {
+    min-height: 45px;
+    padding: 8px 6px;
+  }
+  
+  .question-option i {
+    font-size: 12px;
+  }
+  
+  .question-label {
+    font-size: 10px;
+  }
+}

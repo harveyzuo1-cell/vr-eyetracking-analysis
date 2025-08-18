@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>模块10调试</title>
+</head>
+<body>
+    <h3>模块10调试检查</h3>
+    <p>请在浏览器控制台运行以下JavaScript代码：</p>
+    
+    <pre>
+// 检查模块10导航是否存在
+console.log('检查模块10导航元素:');
+const tenthNav = document.querySelector('[data-view="tenthModule"]');
+console.log('模块10导航元素:', tenthNav);
+
+// 检查模块10视图是否存在  
+const tenthView = document.getElementById('tenthModuleView');
+console.log('模块10视图元素:', tenthView);
+
+// 检查switchToTenthModule函数是否存在
+console.log('switchToTenthModule函数:', typeof switchToTenthModule);
+
+// 如果导航元素存在但不可见，手动调用切换函数
+if (typeof switchToTenthModule === 'function') {
+    console.log('手动切换到模块10...');
+    switchToTenthModule();
+} else {
+    console.log('switchToTenthModule函数未定义');
+}
+
+// 检查模块10 API是否可用
+fetch('/api/eye-index/available-configs')
+    .then(response => response.json())
+    .then(data => console.log('模块10 API响应:', data))
+    .catch(error => console.error('模块10 API错误:', error));
+    </pre>
+    
+    <h3>如果上述检查失败，请尝试：</h3>
+    <ol>
+        <li>完全关闭浏览器</li>
+        <li>重新启动服务器: <code>python start_server.py</code></li>
+        <li>重新打开浏览器访问 http://localhost:8080</li>
+    </ol>
+</body>
+</html>

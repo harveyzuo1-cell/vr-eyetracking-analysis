@@ -1,0 +1,236 @@
+<!-- RQA分析流程模块内容 -->
+<div class="container-fluid">
+    <div class="rqa-pipeline-header">
+        <h2><i class="fas fa-cogs"></i> <span data-lang-key="rqaPipelineTitle">RQA分析流程</span></h2>
+        <p class="lead" data-lang-key="rqaPipelineDescription">完整的眼动数据递归量化分析流程，从数据处理到统计分析再到可视化</p>
+    </div>
+
+    <!-- 参数配置面板 -->
+    <div class="collapsible-section">
+        <div class="collapsible-header" onclick="toggleCollapse('rqaParams')">
+            <h4><i class="fas fa-sliders-h"></i> RQA参数配置</h4>
+            <button class="collapsible-toggle" id="rqaParamsToggle">−</button>
+        </div>
+        <div class="collapsible-content" id="rqaParamsContent">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="pipeline-params-panel">
+                        <div class="row">
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <label for="rqa-embedding-dim" class="form-label">嵌入维度 (m):</label>
+                                <input type="number" class="form-control" id="rqa-embedding-dim" value="2" min="1" max="10" onchange="updateParamSignature()">
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <label for="rqa-time-delay" class="form-label">时间延迟 (τ):</label>
+                                <input type="number" class="form-control" id="rqa-time-delay" value="1" min="1" max="20" onchange="updateParamSignature()">
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <label for="rqa-threshold" class="form-label">递归阈值 (ε):</label>
+                                <input type="number" class="form-control" id="rqa-threshold" value="0.05" min="0.001" max="1" step="0.001" onchange="updateParamSignature()">
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <label for="rqa-min-line" class="form-label">最小线长 (l_min):</label>
+                                <input type="number" class="form-control" id="rqa-min-line" value="2" min="1" max="50" onchange="updateParamSignature()">
+                            </div>
+                        </div>
+                        <div class="param-info">
+                            <div class="row">
+                                <div class="col-lg-8">
+                                    <strong>当前参数组合:</strong> <span id="current-param-signature" class="param-signature">m2_tau1_eps0.05_lmin2</span>
+                                </div>
+                                <div class="col-lg-4 text-end">
+                                    <button class="btn btn-sm btn-outline-info" onclick="loadParamHistory()">
+                                        <i class="fas fa-history"></i> 历史参数
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 流程步骤卡片 -->
+    <div class="collapsible-section">
+        <div class="collapsible-header" onclick="toggleCollapse('pipelineSteps')">
+            <h4><i class="fas fa-cogs"></i> 分析流程</h4>
+            <button class="collapsible-toggle" id="pipelineStepsToggle">−</button>
+        </div>
+        <div class="collapsible-content" id="pipelineStepsContent">
+            <div class="row">
+                <!-- 步骤1: RQA计算 -->
+                <div class="col-lg-4 mb-4">
+                    <div class="pipeline-step-card" id="step1Card">
+                        <div class="step-header">
+                            <div class="step-number">1</div>
+                            <h4>RQA计算模块</h4>
+                        </div>
+                        <div class="step-content">
+                            <p>对眼动轨迹数据进行递归量化分析，计算RR、DET、ENT指标</p>
+                            <div class="step-details">
+                                <li>1D信号分析 (X坐标)</li>
+                                <li>2D信号分析 (X,Y坐标)</li>
+                                <li>相空间重构与递归矩阵</li>
+                            </div>
+                            <button class="btn btn-primary step-btn" onclick="startRQACalculation()">
+                                <i class="fas fa-play"></i> 开始计算
+                            </button>
+                            <div class="step-status" id="step1Status">
+                                <i class="fas fa-clock text-warning"></i> 待执行
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤2: 数据合并 -->
+                <div class="col-lg-4 mb-4">
+                    <div class="pipeline-step-card" id="step2Card">
+                        <div class="step-header">
+                            <div class="step-number">2</div>
+                            <h4>数据合并模块</h4>
+                        </div>
+                        <div class="step-content">
+                            <p>整合Control、MCI、AD三组数据，生成统一数据表</p>
+                            <div class="step-details">
+                                <li>添加组别标识</li>
+                                <li>统一ID格式</li>
+                                <li>数据质量检查</li>
+                            </div>
+                            <button class="btn btn-secondary step-btn" onclick="startDataMerging()">
+                                <i class="fas fa-layer-group"></i> 合并数据
+                            </button>
+                            <div class="step-status" id="step2Status">
+                                <i class="fas fa-clock text-warning"></i> 待执行
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤3: 特征补充 -->
+                <div class="col-lg-4 mb-4">
+                    <div class="pipeline-step-card" id="step3Card">
+                        <div class="step-header">
+                            <div class="step-number">3</div>
+                            <h4>特征补充模块</h4>
+                        </div>
+                        <div class="step-content">
+                            <p>补充眼动事件特征和ROI统计信息</p>
+                            <div class="step-details">
+                                <li>注视时长与次数</li>
+                                <li>扫视幅度与速度</li>
+                                <li>ROI回视统计</li>
+                            </div>
+                            <button class="btn btn-info step-btn" onclick="startFeatureEnrichment()">
+                                <i class="fas fa-plus-circle"></i> 补充特征
+                            </button>
+                            <div class="step-status" id="step3Status">
+                                <i class="fas fa-clock text-warning"></i> 待执行
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- 步骤4: 统计分析 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="pipeline-step-card" id="step4Card">
+                        <div class="step-header">
+                            <div class="step-number">4</div>
+                            <h4>统计分析模块</h4>
+                        </div>
+                        <div class="step-content">
+                            <p>对合并数据进行多层次统计分析</p>
+                            <div class="step-details">
+                                <li>组别间差异分析</li>
+                                <li>任务效应分析</li>
+                                <li>描述性统计</li>
+                            </div>
+                            <button class="btn btn-success step-btn" onclick="startStatisticalAnalysis()">
+                                <i class="fas fa-chart-bar"></i> 统计分析
+                            </button>
+                            <div class="step-status" id="step4Status">
+                                <i class="fas fa-clock text-warning"></i> 待执行
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤5: 可视化 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="pipeline-step-card" id="step5Card">
+                        <div class="step-header">
+                            <div class="step-number">5</div>
+                            <h4>可视化模块</h4>
+                        </div>
+                        <div class="step-content">
+                            <p>生成统计图表和分析报告</p>
+                            <div class="step-details">
+                                <li>组级RQA指标条形图</li>
+                                <li>任务间变化折线图</li>
+                                <li>统计报告导出</li>
+                            </div>
+                            <button class="btn btn-warning step-btn" onclick="startVisualization()">
+                                <i class="fas fa-chart-line"></i> 生成图表
+                            </button>
+                            <div class="step-status" id="step5Status">
+                                <i class="fas fa-clock text-warning"></i> 待执行
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全局控制面板 -->
+    <div class="collapsible-section">
+        <div class="collapsible-header" onclick="toggleCollapse('globalControls')">
+            <h4><i class="fas fa-cog"></i> 全局控制</h4>
+            <button class="collapsible-toggle" id="globalControlsToggle">−</button>
+        </div>
+        <div class="collapsible-content" id="globalControlsContent">
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="pipeline-control-panel">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <button class="btn btn-lg btn-primary w-100" onclick="runFullPipeline()">
+                                    <i class="fas fa-play-circle"></i> 运行完整流程
+                                </button>
+                            </div>
+                            <div class="col-lg-6">
+                                <button class="btn btn-lg btn-outline-secondary w-100" onclick="resetPipeline()">
+                                    <i class="fas fa-redo"></i> 重置流程
+                                </button>
+                            </div>
+                        </div>
+                        <div class="pipeline-progress mt-3">
+                            <label>总体进度:</label>
+                            <div class="progress">
+                                <div class="progress-bar" id="overallProgress" role="progressbar" style="width: 0%">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果展示区域 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="pipeline-results">
+                <h4><i class="fas fa-chart-area"></i> 分析结果</h4>
+                <div class="results-container" id="pipelineResults">
+                    <div class="placeholder-content text-center py-5">
+                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">尚未生成分析结果</h5>
+                        <p class="text-muted">请运行分析流程以查看结果</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

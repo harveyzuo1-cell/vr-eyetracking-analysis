@@ -1,0 +1,145 @@
+.data-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.data-list-loading,
+.data-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.data-list-loading .loading-spinner {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 12px;
+}
+
+.data-list-empty i {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.data-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  background: #f9fafb;
+}
+
+.data-item:hover {
+  background: #f3f4f6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.data-item.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.2);
+}
+
+.data-item-content {
+  flex: 1;
+}
+
+.data-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.data-item-name {
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.question-badge {
+  background: #6b7280;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.question-badge.q1 { background: #ef4444; }
+.question-badge.q2 { background: #f97316; }
+.question-badge.q3 { background: #eab308; }
+.question-badge.q4 { background: #22c55e; }
+.question-badge.q5 { background: #3b82f6; }
+
+.data-item-filename {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.data-item-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.stat-item i {
+  width: 12px;
+  text-align: center;
+}
+
+.data-item-indicator {
+  color: #d1d5db;
+  transition: all 0.3s ease;
+  font-size: 12px;
+}
+
+.data-item:hover .data-item-indicator {
+  color: #6b7280;
+  transform: translateX(2px);
+}
+
+.data-item.selected .data-item-indicator {
+  color: #3b82f6;
+  transform: translateX(2px);
+}
+
+/* 滚动条样式 */
+.data-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.data-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.data-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.data-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

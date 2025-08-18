@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RQA参数配置测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .param-panel { border: 1px solid #ccc; padding: 20px; margin: 20px 0; }
+        .param-row { margin: 10px 0; }
+        label { display: inline-block; width: 150px; }
+        input { width: 100px; margin-right: 10px; }
+        .signature { background: #e1f5fe; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 RQA参数配置测试页面</h1>
+    
+    <div class="param-panel">
+        <h3>RQA参数配置</h3>
+        <div class="param-row">
+            <label>嵌入维度 (m):</label>
+            <input type="number" id="m" value="2" min="1" max="10" onchange="updateSignature()">
+        </div>
+        <div class="param-row">
+            <label>时间延迟 (τ):</label>
+            <input type="number" id="tau" value="1" min="1" max="20" onchange="updateSignature()">
+        </div>
+        <div class="param-row">
+            <label>递归阈值 (ε):</label>
+            <input type="number" id="eps" value="0.05" min="0.001" max="1" step="0.001" onchange="updateSignature()">
+        </div>
+        <div class="param-row">
+            <label>最小线长 (l_min):</label>
+            <input type="number" id="lmin" value="2" min="1" max="50" onchange="updateSignature()">
+        </div>
+        
+        <div class="signature">
+            <strong>参数签名:</strong> <span id="signature">m2_tau1_eps0.05_lmin2</span>
+        </div>
+    </div>
+    
+    <div class="param-panel">
+        <h3>测试API调用</h3>
+        <button onclick="testCalculateAPI()">测试RQA计算API</button>
+        <button onclick="testHistoryAPI()">测试参数历史API</button>
+        
+        <div id="result" style="margin-top: 20px; padding: 10px; background: #f5f5f5;"></div>
+    </div>
+
+    <script>
+        function updateSignature() {
+            const m = document.getElementById('m').value;
+            const tau = document.getElementById('tau').value;
+            const eps = document.getElementById('eps').value;
+            const lmin = document.getElementById('lmin').value;
+            
+            const signature = `m${m}_tau${tau}_eps${eps}_lmin${lmin}`;
+            document.getElementById('signature').textContent = signature;
+        }
+        
+        function getCurrentParams() {
+            return {
+                m: parseInt(document.getElementById('m').value),
+                tau: parseInt(document.getElementById('tau').value),
+                eps: parseFloat(document.getElementById('eps').value),
+                lmin: parseInt(document.getElementById('lmin').value)
+            };
+        }
+        
+        async function testCalculateAPI() {
+            const params = getCurrentParams();
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                resultDiv.innerHTML = '⏳ 测试RQA计算API...';
+                
+                const response = await fetch('/api/rqa-pipeline/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        step: 'rqa_calculation',
+                        parameters: params
+                    })
+                });
+                
+                const result = await response.json();
+                resultDiv.innerHTML = `
+                    <h4>RQA计算结果:</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `❌ 错误: ${error.message}`;
+            }
+        }
+        
+        async function testHistoryAPI() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                resultDiv.innerHTML = '⏳ 测试参数历史API...';
+                
+                const response = await fetch('/api/rqa-pipeline/param-history');
+                const result = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h4>参数历史:</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `❌ 错误: ${error.message}`;
+            }
+        }
+        
+        // 初始化
+        updateSignature();
+    </script>
+</body>
+</html> 

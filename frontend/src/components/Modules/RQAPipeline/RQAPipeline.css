@@ -1,0 +1,7 @@
+.rqa-pipeline-module {
+  /* RQA流程模块特定样式 */
+}
+
+.rqa-pipeline-module .module-content {
+  min-height: 500px;
+}

@@ -1,0 +1,18 @@
+{
+  "best_epoch": 7,
+  "train_time_seconds": 0.0,
+  "model_params": 897,
+  "created_at": "2025-08-19T08:10:12.323344",
+  "config": {
+    "arch": {
+      "h1": 32,
+      "h2": 16,
+      "dropout": 0.15
+    },
+    "training": {
+      "lr": 0.0005,
+      "epochs": 400
+    },
+    "device": "cpu"
+  }
+}

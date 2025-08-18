@@ -1,0 +1,211 @@
+<!-- RQA分析模块内容 -->
+<div class="row">
+    <!-- 左侧控制面板 -->
+    <div class="col-lg-3">
+        <div class="rqa-control-panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-chart-line"></i> <span data-lang-key="rqaAnalysisTitle">递归量化分析 (RQA)</span></h3>
+                <p data-lang-key="rqaAnalysisDescription">批量生成和可视化递归图</p>
+            </div>
+            
+            <!-- 渲染控制 -->
+            <div class="rqa-render-section">
+                <h4><i class="fas fa-paint-brush"></i> <span data-lang-key="renderControl">渲染控制</span></h4>
+                
+                <!-- 分析模式 -->
+                <div class="form-group">
+                    <label for="rqaAnalysisMode" data-lang-key="analysisMode">分析模式:</label>
+                    <select id="rqaAnalysisMode" class="form-control">
+                        <option value="1d_x" data-lang-key="analysis1DX">1D信号 (X坐标)</option>
+                        <option value="1d_amplitude" data-lang-key="analysis1DAmplitude">1D信号 (幅度)</option>
+                        <option value="2d_xy" data-lang-key="analysis2DXY">2D信号 (X,Y坐标)</option>
+                    </select>
+                </div>
+                
+                <!-- 距离度量 -->
+                <div class="form-group">
+                    <label for="rqaDistanceMetric" data-lang-key="distanceMetric">距离度量:</label>
+                    <select id="rqaDistanceMetric" class="form-control">
+                        <option value="1d_abs" data-lang-key="distance1DAbs">1D绝对差</option>
+                        <option value="euclidean" data-lang-key="distanceEuclidean">欧几里得距离</option>
+                    </select>
+                </div>
+                
+                <!-- 嵌入维度 -->
+                <div class="form-group">
+                    <label for="rqaEmbeddingDim" data-lang-key="embeddingDimension">嵌入维度 (m):</label>
+                    <div class="input-group">
+                        <input type="range" class="form-control-range" id="rqaEmbeddingDim" min="1" max="10" value="2">
+                        <div class="input-group-append">
+                            <span class="input-group-text" id="rqaEmbeddingDimValue">2</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 时间延迟 -->
+                <div class="form-group">
+                    <label for="rqaTimeDelay" data-lang-key="timeDelay">时间延迟 (τ):</label>
+                    <div class="input-group">
+                        <input type="range" class="form-control-range" id="rqaTimeDelay" min="1" max="20" value="1">
+                        <div class="input-group-append">
+                            <span class="input-group-text" id="rqaTimeDelayValue">1</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 递归阈值 -->
+                <div class="form-group">
+                    <label for="rqaThreshold" data-lang-key="recurrenceThreshold">递归阈值 (ε):</label>
+                    <div class="input-group">
+                        <input type="range" class="form-control-range" id="rqaThreshold" min="0.01" max="0.5" step="0.01" value="0.05">
+                        <div class="input-group-append">
+                            <span class="input-group-text" id="rqaThresholdValue">0.05</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 最小线长 -->
+                <div class="form-group">
+                    <label for="rqaMinLineLength" data-lang-key="minLineLength">最小线长 (l_min):</label>
+                    <div class="input-group">
+                        <input type="range" class="form-control-range" id="rqaMinLineLength" min="2" max="10" value="2">
+                        <div class="input-group-append">
+                            <span class="input-group-text" id="rqaMinLineLengthValue">2</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 渲染颜色 -->
+                <div class="form-group">
+                    <label for="rqaColorTheme" data-lang-key="colorTheme">渲染颜色:</label>
+                    <select id="rqaColorTheme" class="form-control">
+                        <option value="grayscale" data-lang-key="grayscaleTheme">灰度</option>
+                        <option value="green_gradient" data-lang-key="greenGradientTheme">墨绿色到白色渐变</option>
+                    </select>
+                </div>
+                
+                <!-- 渲染按钮 -->
+                <div class="render-controls">
+                    <button id="startRQARender" class="btn btn-success btn-block" onclick="startRQARender()">
+                        <i class="fas fa-magic"></i> <span data-lang-key="startRender">开始渲染</span>
+                    </button>
+                    <button id="checkRenderStatus" class="btn btn-info btn-block mt-2" onclick="checkRenderStatus()">
+                        <i class="fas fa-info-circle"></i> <span data-lang-key="checkStatus">检查状态</span>
+                    </button>
+                </div>
+                
+                <!-- 渲染进度 -->
+                <div id="renderProgress" class="render-progress mt-3" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted mt-1" id="renderStatusText">准备渲染...</small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- 右侧结果展示面板 -->
+    <div class="col-lg-9">
+        <div class="rqa-results-panel">
+            <!-- 结果标题 -->
+            <div class="result-header">
+                <h4><i class="fas fa-image"></i> <span data-lang-key="rqaResultsTitle">递归图可视化结果</span></h4>
+                <p data-lang-key="rqaResultsDescription">一行显示5列，按组别和问题排列</p>
+                <div class="header-info">
+                    <span id="rqaDisplayInfo" class="text-muted">请先渲染数据</span>
+                </div>
+            </div>
+            
+            <!-- 紧凑筛选控制 -->
+            <div class="rqa-compact-filters">
+                <div class="filter-header">
+                    <h5><i class="fas fa-filter"></i> 筛选设置</h5>
+                </div>
+                <div class="filters-grid">
+                    <!-- 第一行：基础筛选 -->
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label for="rqaFilterImageType">图片类型</label>
+                            <select class="form-control form-control-sm" id="rqaFilterImageType" onchange="updateRQADisplay()">
+                                <option value="amplitude">幅度图</option>
+                                <option value="trajectory">轨迹图</option>
+                                <option value="recurrence">递归图</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="rqaFilterGroup">组别</label>
+                            <select class="form-control form-control-sm" id="rqaFilterGroup" onchange="updateRQADisplay()">
+                                <option value="all" selected>全部</option>
+                                <option value="control">控制组</option>
+                                <option value="mci">MCI组</option>
+                                <option value="ad">AD组</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="rqaFilterQuestion">问题</label>
+                            <select class="form-control form-control-sm" id="rqaFilterQuestion" onchange="updateRQADisplay()">
+                                <option value="all" selected>全部</option>
+                                <option value="1">Q1</option>
+                                <option value="2">Q2</option>
+                                <option value="3">Q3</option>
+                                <option value="4">Q4</option>
+                                <option value="5">Q5</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="rqaFilterParamSet">参数组合</label>
+                            <select class="form-control form-control-sm" id="rqaFilterParamSet" onchange="updateRQADisplay()">
+                                <option value="all" selected>全部参数</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- 第二行：参数筛选 -->
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label for="rqaFilterAnalysisMode">分析模式</label>
+                            <select class="form-control form-control-sm" id="rqaFilterAnalysisMode" onchange="updateRQADisplay()">
+                                <option value="all" selected>全部</option>
+                                <option value="1d_x">1D信号(X)</option>
+                                <option value="1d_amplitude">1D信号(幅度)</option>
+                                <option value="2d_xy">2D信号(XY)</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="rqaFilterDistanceMetric">距离度量</label>
+                            <select class="form-control form-control-sm" id="rqaFilterDistanceMetric" onchange="updateRQADisplay()">
+                                <option value="all" selected>全部</option>
+                                <option value="1d_abs">1D绝对差</option>
+                                <option value="euclidean">欧几里得</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="rqaFilterColorTheme">渲染颜色</label>
+                            <select class="form-control form-control-sm" id="rqaFilterColorTheme" onchange="updateRQADisplay()">
+                                <option value="all" selected>全部</option>
+                                <option value="grayscale">灰度</option>
+                                <option value="green_gradient">墨绿色</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <button class="btn btn-primary btn-sm" onclick="updateRQADisplay()">
+                                <i class="fas fa-sync"></i> 刷新
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                            
+            <!-- 图像展示区域 -->
+            <div class="rqa-images-container" id="rqaImagesContainer">
+                <div class="placeholder-content text-center py-5">
+                    <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted" data-lang-key="noRQAImages">尚未渲染RQA图像</h5>
+                    <p class="text-muted" data-lang-key="renderTip">请先设置参数并点击"开始渲染"按钮</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

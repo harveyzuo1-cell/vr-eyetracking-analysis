@@ -1,0 +1,94 @@
+.data-visualization-module {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.visualization-layout {
+  display: flex;
+  height: calc(100vh - 180px); /* 减去header和module-header的高度 */
+  gap: 20px;
+}
+
+.visualization-sidebar {
+  width: 350px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.visualization-content {
+  flex: 1;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+/* 侧边栏各部分 */
+.filter-section,
+.data-list-section,
+.controls-section {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.filter-section:last-child,
+.data-list-section:last-child,
+.controls-section:last-child {
+  border-bottom: none;
+}
+
+.filter-title,
+.list-title,
+.controls-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.data-count {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: normal;
+}
+
+.data-list-section {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+.data-list-section .data-list {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .visualization-sidebar {
+    width: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .visualization-layout {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .visualization-sidebar {
+    width: 100%;
+    height: 400px;
+  }
+  
+  .visualization-content {
+    min-height: 500px;
+  }
+}

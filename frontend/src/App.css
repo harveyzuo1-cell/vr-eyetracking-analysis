@@ -1,0 +1,125 @@
+.App {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+/* 主布局样式 */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* 内容区域样式 */
+.app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 模块容器通用样式 */
+.module-container {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background: #f8fafc;
+}
+
+.module-header {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.module-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.module-subtitle {
+  color: #6b7280;
+  margin: 8px 0 0 0;
+  font-size: 0.95rem;
+}
+
+.module-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+/* 加载状态 */
+.module-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #6b7280;
+}
+
+.module-loading .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 4px;
+  margin-bottom: 16px;
+}
+
+/* 错误状态 */
+.module-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #dc2626;
+  text-align: center;
+}
+
+.module-error i {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+/* 空状态 */
+.module-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.module-empty i {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .module-container {
+    padding: 16px;
+  }
+  
+  .module-header,
+  .module-content {
+    padding: 16px;
+  }
+  
+  .module-title {
+    font-size: 1.25rem;
+  }
+}

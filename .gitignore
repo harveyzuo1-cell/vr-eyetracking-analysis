@@ -1,0 +1,121 @@
+# Node modules (React/Vue dependencies)
+node_modules/
+*/node_modules/
+frontend/node_modules/
+
+# Build directories
+dist/
+build/
+.next/
+out/
+*/dist/
+*/build/
+
+# Package lock files (optional, but often excluded)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary files
+*.tmp
+temp/
+tmp/
+temp_uploads/
+
+# Model files (large binary files)
+*.pt
+*.pth
+*.h5
+*.pkl
+*.joblib
+*.ts
+
+# Data files (optional - uncomment if needed)
+# *.csv
+# *.xlsx
+# *.xls
+
+# Cache
+.cache/
+*.cache
+
+# Testing
+coverage/
+.nyc_output/
+htmlcov/
+.pytest_cache/
+.coverage
+
+# Production builds
+*.min.js
+*.min.css
+
+# Backup files
+backup*/
+*.backup
+*.bak
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# Large data directories (customize as needed)
+# data/ad_raw/
+# data/mci_raw/
+# data/control_raw/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# TensorBoard logs
+runs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Keep important configuration files
+!.gitignore
+!README.md
+!requirements.txt
+!package.json

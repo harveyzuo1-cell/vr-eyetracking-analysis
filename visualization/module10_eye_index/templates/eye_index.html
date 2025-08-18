@@ -1,0 +1,339 @@
+<!-- 模块10 Eye-Index 综合评估前端界面 -->
+
+<!-- 子模块10-A: 数据准备 -->
+<div class="card mb-4" id="module10a-data-prep">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-database"></i> 
+            <span data-lang-key="module10aTitle">子模块10-A: 数据准备与构建</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <!-- 配置选择 -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="build-rqa-config-select" class="form-label">
+                            <span data-lang-key="selectRqaConfig">选择RQA配置</span>:
+                        </label>
+                        <select id="build-rqa-config-select" class="form-select">
+                            <option value="" data-lang-key="pleaseSelect">请选择配置...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="val-split-input" class="form-label">
+                            <span data-lang-key="valSplit">验证集比例</span>:
+                        </label>
+                        <input type="number" id="val-split-input" class="form-control" 
+                               value="0.2" min="0.1" max="0.5" step="0.05">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="random-state-input" class="form-label">
+                            <span data-lang-key="randomState">随机种子</span>:
+                        </label>
+                        <input type="number" id="random-state-input" class="form-control" 
+                               value="42" min="1" max="9999">
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <button class="btn btn-primary me-2" id="btn-check-prerequisites">
+                            <i class="fas fa-check-circle"></i> 
+                            <span data-lang-key="checkPrerequisites">检查前置条件</span>
+                        </button>
+                        <button class="btn btn-success me-2" id="btn-build-dataset" disabled>
+                            <i class="fas fa-cogs"></i> 
+                            <span data-lang-key="buildDataset">构建数据集</span>
+                        </button>
+                        <button class="btn btn-info" id="btn-refresh-dataset-status">
+                            <i class="fas fa-sync"></i> 
+                            <span data-lang-key="refreshStatus">刷新状态</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 状态显示 -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-info-circle"></i> 
+                                    <span data-lang-key="statusInfo">状态信息</span>
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="prerequisites-status" class="mb-3">
+                                    <div class="alert alert-secondary">
+                                        <span data-lang-key="clickCheckPrerequisites">请点击"检查前置条件"按钮开始</span>
+                                    </div>
+                                </div>
+                                <div id="build-progress" style="display: none;">
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted" id="build-progress-text">准备中...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- 已构建数据集状态 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-list"></i> 
+                            <span data-lang-key="builtDatasets">已构建数据集</span>
+                        </h6>
+                    </div>
+                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                        <div id="dataset-list">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-loading fa-spin"></i> 
+                                <span data-lang-key="loading">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 子模块10-B: S_eye计算与分析 -->
+<div class="card mt-4" id="module10-eye-index">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-eye"></i> 
+            <span data-lang-key="eyeIndexTitle">子模块10-B: 综合眼动系数 S<sub>eye</sub></span>
+        </h5>
+        <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-primary" id="btn-run-eye-index">
+                <i class="fas fa-calculator"></i> 
+                <span data-lang-key="calculateSEye">重新计算</span>
+            </button>
+            <button class="btn btn-sm btn-info" id="btn-refresh-eye-index">
+                <i class="fas fa-sync"></i> 
+                <span data-lang-key="refreshData">刷新数据</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <!-- 配置选择区域 -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="eye-index-config-select" class="form-label">
+                    <span data-lang-key="selectConfig">选择RQA配置</span>:
+                </label>
+                <select id="eye-index-config-select" class="form-select form-select-sm">
+                    <option value="" data-lang-key="pleaseSelect">请选择配置...</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="s-eye-mode-select" class="form-label">
+                    <span data-lang-key="calculationMode">计算模式</span>:
+                </label>
+                <select id="s-eye-mode-select" class="form-select form-select-sm">
+                    <option value="equal" data-lang-key="equalWeight">等权平均</option>
+                    <option value="pca" data-lang-key="pcaMode">PCA第一主成分</option>
+                    <option value="custom" data-lang-key="customWeight">自定义权重</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">
+                    <span data-lang-key="status">状态</span>:
+                </label>
+                <div id="eye-index-status" class="badge bg-secondary">
+                    <span data-lang-key="notCalculated">未计算</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 自定义权重设置（默认隐藏） -->
+        <div id="custom-weights-panel" class="row mb-3" style="display: none;">
+            <div class="col-12">
+                <label class="form-label">
+                    <span data-lang-key="customWeights">自定义权重</span> (10个特征，总和为1):
+                </label>
+                <div class="row">
+                    <div class="col-6">
+                        <small class="text-muted"><span data-lang-key="basicFeatures">基础特征</span>:</small>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">游戏时长</span>
+                            <input type="number" class="form-control weight-input" data-feature="game_duration" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">关键词ROI</span>
+                            <input type="number" class="form-control weight-input" data-feature="kw_roi_time" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">指令ROI</span>
+                            <input type="number" class="form-control weight-input" data-feature="inst_roi_time" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">背景ROI</span>
+                            <input type="number" class="form-control weight-input" data-feature="bg_roi_time" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted"><span data-lang-key="rqaFeatures">RQA特征</span>:</small>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">RR_1D</span>
+                            <input type="number" class="form-control weight-input" data-feature="rr_1d" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">DET_1D</span>
+                            <input type="number" class="form-control weight-input" data-feature="det_1d" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">ENT_1D</span>
+                            <input type="number" class="form-control weight-input" data-feature="ent_1d" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">RR_2D</span>
+                            <input type="number" class="form-control weight-input" data-feature="rr_2d" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">DET_2D</span>
+                            <input type="number" class="form-control weight-input" data-feature="det_2d" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">ENT_2D</span>
+                            <input type="number" class="form-control weight-input" data-feature="ent_2d" 
+                                   value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-2">
+                    <small id="weights-sum" class="text-muted">权重总和: 1.00</small>
+                    <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="btn-normalize-weights">
+                        <span data-lang-key="normalizeWeights">归一化权重</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表展示区域 -->
+        <div class="row">
+            <!-- 三组箱线图 -->
+            <div class="col-md-6 mb-4">
+                <h6 class="text-center">
+                    <span data-lang-key="sEyeBoxPlot">S<sub>eye</sub> 分组箱线图</span>
+                </h6>
+                <canvas id="box-s-eye" height="180"></canvas>
+            </div>
+            
+            <!-- S_eye-MMSE散点图 -->
+            <div class="col-md-6 mb-4">
+                <h6 class="text-center">
+                    <span data-lang-key="sEyeMMSEScatter">S<sub>eye</sub> vs MMSE 散点图</span>
+                </h6>
+                <div class="mb-2">
+                    <select id="mmse-select" class="form-select form-select-sm">
+                        <option value="Q1_subscore" data-lang-key="q1TimeOrientation">Q1 时间定向</option>
+                        <option value="Q2_subscore" data-lang-key="q2SpaceOrientation">Q2 空间定向</option>
+                        <option value="Q3_subscore" data-lang-key="q3ImmediateMemory">Q3 即刻记忆</option>
+                        <option value="Q4_subscore" data-lang-key="q4AttentionCalculation">Q4 注意力计算</option>
+                        <option value="Q5_subscore" data-lang-key="q5DelayedRecall">Q5 延迟回忆</option>
+                    </select>
+                </div>
+                <canvas id="scatter-s-eye" height="180"></canvas>
+            </div>
+        </div>
+        
+        <!-- 单受试者雷达图 -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <h6 class="text-center">
+                    <span data-lang-key="subjectRadar">受试者特征雷达图</span>
+                </h6>
+                <div class="mb-2">
+                    <select id="subject-select" class="form-select form-select-sm">
+                        <option value="" data-lang-key="selectSubject">选择受试者...</option>
+                    </select>
+                </div>
+                <canvas id="radar-s-eye" height="200"></canvas>
+            </div>
+            
+            <!-- 解释性文档面板 -->
+            <div class="col-md-6 mb-4">
+                <h6 class="text-center">
+                    <span data-lang-key="interpretationPanel">分析解释</span>
+                </h6>
+                <div id="doc-s-eye" class="alert alert-info" style="height: 250px; overflow-y: auto; font-size: 0.9em;">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-info-circle fa-2x mb-2"></i><br>
+                        <span data-lang-key="pleaseCalculateFirst">请先选择配置并计算S<sub>eye</sub></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计表格 -->
+        <div class="row">
+            <div class="col-12">
+                <h6><span data-lang-key="statisticsTable">统计摘要表</span></h6>
+                <div class="table-responsive">
+                    <table id="stats-table" class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th data-lang-key="group">组别</th>
+                                <th data-lang-key="count">样本数</th>
+                                <th data-lang-key="mean">均值</th>
+                                <th data-lang-key="std">标准差</th>
+                                <th data-lang-key="median">中位数</th>
+                                <th data-lang-key="q1q3">四分位数</th>
+                                <th data-lang-key="range">范围</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="text-center text-muted">
+                                <td colspan="7">
+                                    <span data-lang-key="noDataAvailable">暂无数据</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 导出按钮区域 -->
+        <div class="row mt-3">
+            <div class="col-12 text-center">
+                <button class="btn btn-success me-2" id="btn-export-csv" disabled>
+                    <i class="fas fa-file-csv"></i> 
+                    <span data-lang-key="exportCSV">导出CSV数据</span>
+                </button>
+                <button class="btn btn-warning me-2" id="btn-export-json" disabled>
+                    <i class="fas fa-file-code"></i> 
+                    <span data-lang-key="exportJSON">导出JSON报告</span>
+                </button>
+                <button class="btn btn-danger" id="btn-export-pdf" disabled>
+                    <i class="fas fa-file-pdf"></i> 
+                    <span data-lang-key="exportPDF">导出PDF报告</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入Eye-Index专用JavaScript -->
+<script src="/static/js/eye_index.js"></script>

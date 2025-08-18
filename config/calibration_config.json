@@ -1,0 +1,94 @@
+{
+    "calibration_system": {
+        "version": "2.0",
+        "last_updated": "2025-01-24",
+        "description": "VR眼动数据多级校准系统配置"
+    },
+    "default_profiles": {
+        "default_control": {
+            "offset_x": -0.030,
+            "offset_y": -0.140,
+            "description": "控制组默认校准参数"
+        },
+        "default_mci": {
+            "offset_x": -0.035,
+            "offset_y": -0.145,
+            "description": "MCI组默认校准参数"
+        },
+        "default_ad": {
+            "offset_x": -0.025,
+            "offset_y": -0.130,
+            "description": "AD组默认校准参数"
+        }
+    },
+    "group_specific_overrides": {
+        "control_group_13": {
+            "offset_x": -0.035,
+            "offset_y": -0.150,
+            "reason": "该组设备偏移较大，需要额外校准"
+        },
+        "control_group_20": {
+            "offset_x": -0.025,
+            "offset_y": -0.130,
+            "reason": "该组数据质量较好，需要轻微校准"
+        }
+    },
+    "file_specific_overrides": {
+        "n15q3_preprocessed.csv": {
+            "offset_x": -0.040,
+            "offset_y": -0.135,
+            "reason": "该文件存在特殊偏移"
+        }
+    },
+    "calibration_settings": {
+        "coordinate_precision": 6,
+        "backup_original": true,
+        "log_calibration": true,
+        "validate_ranges": {
+            "x_min": -0.1,
+            "x_max": 1.1,
+            "y_min": -0.1,
+            "y_max": 1.1
+        }
+    },
+    "quality_control": {
+        "check_extreme_values": true,
+        "extreme_threshold": 0.05,
+        "warn_negative_coordinates": true,
+        "warn_coordinates_above_one": true
+    },
+    "research_groups": {
+        "control": {
+            "name": "对照组",
+            "folder_pattern": "control_group_*",
+            "id_prefix": "n",
+            "color": "#28a745"
+        },
+        "mci": {
+            "name": "MCI组",
+            "folder_pattern": "mci_group_*", 
+            "id_prefix": "m",
+            "color": "#ffc107"
+        },
+        "ad": {
+            "name": "AD组",
+            "folder_pattern": "ad_group_*",
+            "id_prefix": "ad", 
+            "color": "#dc3545"
+        }
+    },
+    "inplace_calibration": {
+        "enabled": true,
+        "backup_before_overwrite": true,
+        "default_question_filter": [],
+        "supported_filename_formats": [
+            "nXXqY_preprocessed.csv",
+            "mXXqY_preprocessed.csv", 
+            "adXXqY_preprocessed.csv"
+        ],
+        "custom_offsets": {
+            "allow_manual_override": true,
+            "offset_precision": 3
+        }
+    }
+} 

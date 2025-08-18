@@ -1,0 +1,21 @@
+{
+  "q_tag": "Q2",
+  "version": "best",
+  "sig": "m2_tau1_eps0.055_lmin2",
+  "rmse": 0.186,
+  "mae": 0.142,
+  "r2": 0.721,
+  "mse": 0.035,
+  "validation_split": 0.2,
+  "training_epochs": 250,
+  "best_epoch": 198,
+  "created_at": "2025-08-06T04:23:00Z",
+  "model_architecture": {
+    "input_dim": 10,
+    "hidden_1": 32,
+    "hidden_2": 16,
+    "output_dim": 1,
+    "dropout": 0.25,
+    "activation": "relu_sigmoid"
+  }
+}

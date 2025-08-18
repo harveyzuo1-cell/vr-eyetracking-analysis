@@ -1,0 +1,63 @@
+{
+  "total_samples": 58,
+  "train_samples": 46,
+  "test_samples": 12,
+  "feature_count": 10,
+  "target_count": 5,
+  "group_distribution": {
+    "mci": 20,
+    "control": 20,
+    "ad": 18
+  },
+  "feature_names": [
+    "eye_coeff_mean",
+    "eye_coeff_std",
+    "eye_coeff_min",
+    "eye_coeff_max",
+    "task_count",
+    "eye_coeff_q1",
+    "eye_coeff_q2",
+    "eye_coeff_q3",
+    "eye_coeff_q4",
+    "eye_coeff_q5"
+  ],
+  "target_names": [
+    "Q1_subscore",
+    "Q2_subscore",
+    "Q3_subscore",
+    "Q4_subscore",
+    "Q5_subscore"
+  ],
+  "target_stats": {
+    "Q1_subscore": {
+      "mean": 5.086206896551724,
+      "std": 1.8570348253082773,
+      "min": 1.0,
+      "max": 7.0
+    },
+    "Q2_subscore": {
+      "mean": 6.241379310344827,
+      "std": 1.0972108951046549,
+      "min": 3.0,
+      "max": 7.0
+    },
+    "Q3_subscore": {
+      "mean": 8.482758620689655,
+      "std": 1.1431163823167225,
+      "min": 6.0,
+      "max": 9.0
+    },
+    "Q4_subscore": {
+      "mean": 2.9827586206896552,
+      "std": 1.395373047150422,
+      "min": 0.0,
+      "max": 5.0
+    },
+    "Q5_subscore": {
+      "mean": 1.6551724137931034,
+      "std": 1.0850131236643619,
+      "min": 0.0,
+      "max": 3.0
+    }
+  }
+}

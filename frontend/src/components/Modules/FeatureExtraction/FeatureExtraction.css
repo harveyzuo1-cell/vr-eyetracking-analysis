@@ -1,0 +1,7 @@
+.feature-extraction-module {
+  /* 特征提取模块特定样式 */
+}
+
+.feature-extraction-module .module-content {
+  min-height: 500px;
+}

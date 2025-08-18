@@ -1,0 +1,76 @@
+{
+  "description": "眼动特征方向一致性配置 - 统一为'数值越高=认知越好'",
+  "version": "1.0",
+  "created": "2025-08-04",
+  "feature_transforms": {
+    "game_duration": {
+      "transform": "reciprocal",
+      "description": "完成任务总时长(s) - 原始越大越差，使用倒数变换",
+      "original_direction": "lower_better",
+      "transformed_direction": "higher_better"
+    },
+    "KW_ROI_time": {
+      "transform": "negate",
+      "description": "KW-ROI停留时长(s) - 原始越大越差，使用负号变换",
+      "original_direction": "lower_better",
+      "transformed_direction": "higher_better"
+    },
+    "INST_ROI_time": {
+      "transform": "negate",
+      "description": "INST-ROI停留时长(s) - 原始越大越差，使用负号变换",
+      "original_direction": "lower_better",
+      "transformed_direction": "higher_better"
+    },
+    "BG_ROI_time": {
+      "transform": "negate",
+      "description": "BG-ROI停留时长(s) - 原始越大越差，使用负号变换",
+      "original_direction": "lower_better",
+      "transformed_direction": "higher_better"
+    },
+    "RR_1D": {
+      "transform": "identity",
+      "description": "Recurrence Rate 1-D - 原始越大越好，保持不变",
+      "original_direction": "higher_better",
+      "transformed_direction": "higher_better"
+    },
+    "DET_1D": {
+      "transform": "identity",
+      "description": "Determinism 1-D - 原始越大越好，保持不变",
+      "original_direction": "higher_better",
+      "transformed_direction": "higher_better"
+    },
+    "ENT_1D": {
+      "transform": "identity",
+      "description": "Entropy 1-D - 原始越大越好，保持不变",
+      "original_direction": "higher_better",
+      "transformed_direction": "higher_better"
+    },
+    "RR_2D": {
+      "transform": "identity",
+      "description": "Recurrence Rate 2-D - 原始越大越好，保持不变",
+      "original_direction": "higher_better",
+      "transformed_direction": "higher_better"
+    },
+    "DET_2D": {
+      "transform": "identity",
+      "description": "Determinism 2-D - 原始越大越好，保持不变",
+      "original_direction": "higher_better",
+      "transformed_direction": "higher_better"
+    },
+    "ENT_2D": {
+      "transform": "identity",
+      "description": "Entropy 2-D - 原始越大越好，保持不变",
+      "original_direction": "higher_better",
+      "transformed_direction": "higher_better"
+    }
+  },
+  "standardization": {
+    "method": "StandardScaler",
+    "description": "Z-score标准化，使所有特征均值=0，标准差=1"
+  },
+  "validation": {
+    "check_correlations": true,
+    "correlation_threshold": 0.0,
+    "description": "验证所有特征与MMSE总分的相关性应≥0"
+  }
+}

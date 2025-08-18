@@ -1,0 +1,110 @@
+{
+  "analysis_summary": {
+    "game_duration": {
+      "error": "未找到有效的时长数据"
+    },
+    "roi_fixation_time": {
+      "error": "文件不存在: data\\event_analysis_results\\All_ROI_Summary.csv"
+    },
+    "rqa_metrics": {
+      "error": "RQA路径不存在: data\\rqa_pipeline_results\\m2_tau1_eps0.055_lmin2\\step1_rqa_calculation"
+    },
+    "roi_time_percentage": {
+      "error": "需要先分析ROI时间和游戏时长"
+    }
+  },
+  "normalization_config": {
+    "version": "1.0",
+    "description": "眼动数据归一化配置",
+    "features": {
+      "game_duration": {
+        "name": "游戏总时长",
+        "unit": "秒",
+        "min_value": 0.0,
+        "max_value": 180.0,
+        "normalization_method": "min_max",
+        "formula": "(value - min) / (max - min)",
+        "note": "每个任务最长3分钟"
+      },
+      "roi_fixation_time": {
+        "name": "ROI注视总时间",
+        "unit": "秒",
+        "min_value": 0.0,
+        "max_value": 25.0,
+        "normalization_method": "min_max_clipped",
+        "formula": "clip((value - min) / (max - min), 0, 1)",
+        "note": "超过最大值的截断为1"
+      },
+      "roi_time_percentage": {
+        "name": "ROI时间占比",
+        "unit": "比例",
+        "min_value": 0.0,
+        "max_value": 1.0,
+        "normalization_method": "direct",
+        "formula": "value",
+        "note": "已经是0-1的比例，无需归一化"
+      },
+      "RR-2D-xy": {
+        "name": "RQA指标-RR-2D-xy",
+        "unit": "无量纲",
+        "min_value": 0.0,
+        "max_value": 0.15,
+        "normalization_method": "min_max_clipped",
+        "formula": "clip((value - min) / (max - min), 0, 1)",
+        "typical_range": "0.01-0.05",
+        "actual_range": "N/A"
+      },
+      "RR-1D-x": {
+        "name": "RQA指标-RR-1D-x",
+        "unit": "无量纲",
+        "min_value": 0.0,
+        "max_value": 0.2,
+        "normalization_method": "min_max_clipped",
+        "formula": "clip((value - min) / (max - min), 0, 1)",
+        "typical_range": "0.03-0.10",
+        "actual_range": "N/A"
+      },
+      "DET-2D-xy": {
+        "name": "RQA指标-DET-2D-xy",
+        "unit": "无量纲",
+        "min_value": 0.0,
+        "max_value": 1.0,
+        "normalization_method": "min_max_clipped",
+        "formula": "clip((value - min) / (max - min), 0, 1)",
+        "typical_range": "0.60-0.95",
+        "actual_range": "N/A"
+      },
+      "DET-1D-x": {
+        "name": "RQA指标-DET-1D-x",
+        "unit": "无量纲",
+        "min_value": 0.0,
+        "max_value": 1.0,
+        "normalization_method": "min_max_clipped",
+        "formula": "clip((value - min) / (max - min), 0, 1)",
+        "typical_range": "0.60-0.90",
+        "actual_range": "N/A"
+      },
+      "ENT-2D-xy": {
+        "name": "RQA指标-ENT-2D-xy",
+        "unit": "无量纲",
+        "min_value": 0.0,
+        "max_value": 5.0,
+        "normalization_method": "min_max_clipped",
+        "formula": "clip((value - min) / (max - min), 0, 1)",
+        "typical_range": "1.0-3.5",
+        "actual_range": "N/A"
+      },
+      "ENT-1D-x": {
+        "name": "RQA指标-ENT-1D-x",
+        "unit": "无量纲",
+        "min_value": 0.0,
+        "max_value": 5.0,
+        "normalization_method": "min_max_clipped",
+        "formula": "clip((value - min) / (max - min), 0, 1)",
+        "typical_range": "1.0-3.0",
+        "actual_range": "N/A"
+      }
+    }
+  },
+  "timestamp": "2025-07-31T17:28:58.634248"
+}

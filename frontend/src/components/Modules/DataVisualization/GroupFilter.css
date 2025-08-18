@@ -1,0 +1,110 @@
+.group-filter {
+  margin-bottom: 16px;
+}
+
+.filter-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.group-option:hover {
+  background: #f3f4f6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.group-option.active {
+  background: white;
+  border-color: var(--group-color);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+
+.group-option.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--group-color);
+}
+
+.group-option-content {
+  flex: 1;
+  text-align: left;
+}
+
+.group-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 2px;
+}
+
+.group-count {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.group-option.active .group-label {
+  color: var(--group-color);
+  font-weight: 600;
+}
+
+.group-option.active .group-count {
+  color: var(--group-color);
+  font-weight: 500;
+}
+
+.group-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.group-option.active .group-indicator {
+  background: var(--group-color);
+  transform: scale(1.2);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .group-option {
+    padding: 8px 10px;
+  }
+  
+  .group-label {
+    font-size: 12px;
+  }
+  
+  .group-count {
+    font-size: 10px;
+  }
+}

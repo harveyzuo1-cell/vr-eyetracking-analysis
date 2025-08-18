@@ -1,0 +1,7 @@
+.data-organization-module {
+  /* 数据整理模块特定样式 */
+}
+
+.data-organization-module .module-content {
+  min-height: 500px;
+}

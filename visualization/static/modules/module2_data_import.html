@@ -1,0 +1,220 @@
+<!-- 数据导入模块内容 -->
+<div class="import-layout">
+    <div class="import-main">
+        <div class="data-import-container">
+    <!-- 功能标题 -->
+    <div class="import-header">
+        <h2><i class="fas fa-cloud-upload-alt"></i> <span data-lang-key="dataImportTitle">数据导入与处理</span></h2>
+        <p data-lang-key="dataImportDesc">批量导入原始眼动数据，自动完成预处理和校准步骤</p>
+    </div>
+    
+    <!-- 导入步骤指示器 -->
+    <div class="import-steps">
+        <div class="step active" data-step="upload">
+            <div class="step-number">1</div>
+            <div class="step-label" data-lang-key="stepUpload">上传文件</div>
+        </div>
+        <div class="step" data-step="group">
+            <div class="step-number">2</div>
+            <div class="step-label" data-lang-key="stepGroup">选择分组</div>
+        </div>
+        <div class="step" data-step="process">
+            <div class="step-number">3</div>
+            <div class="step-label" data-lang-key="stepProcess">数据处理</div>
+        </div>
+        <div class="step" data-step="complete">
+            <div class="step-number">4</div>
+            <div class="step-label" data-lang-key="stepComplete">完成</div>
+        </div>
+    </div>
+    
+    <!-- 文件上传区域 -->
+    <div class="upload-section" id="uploadSection">
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">
+                <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="upload-text">
+                <h3 data-lang-key="uploadTitle">拖拽或点击选择文件</h3>
+                <p data-lang-key="uploadDesc">支持.txt格式的原始眼动数据文件，可同时选择多个文件</p>
+            </div>
+            <input type="file" id="fileInput" multiple accept=".txt" style="display: none;">
+            <button class="btn-upload" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-folder-open"></i>
+                <span data-lang-key="selectFiles">选择文件</span>
+            </button>
+        </div>
+        
+        <!-- 文件列表 -->
+        <div class="file-list" id="fileList" style="display: none;">
+            <h4><i class="fas fa-list"></i> <span data-lang-key="selectedFiles">已选择的文件</span></h4>
+            <div class="file-items" id="fileItems"></div>
+            <div class="file-actions">
+                <button class="btn btn-secondary" onclick="clearFiles()">
+                    <i class="fas fa-trash"></i>
+                    <span data-lang-key="clearFiles">清空</span>
+                </button>
+                <button class="btn btn-success" onclick="proceedToGroupSelection()">
+                    <i class="fas fa-arrow-right"></i>
+                    <span data-lang-key="nextStep">下一步</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 分组选择区域 -->
+    <div class="group-selection" id="groupSelection" style="display: none;">
+        <h3><i class="fas fa-users"></i> <span data-lang-key="selectGroup">选择数据分组</span></h3>
+        <p data-lang-key="groupSelectionDesc">为这批导入的数据选择合适的研究组别</p>
+        
+        <div class="group-cards">
+            <div class="group-card" data-group="control">
+                <div class="group-card-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="group-card-info">
+                    <h4 data-lang-key="controlGroup">健康对照组</h4>
+                    <p data-lang-key="controlDesc">认知功能正常的健康被试</p>
+                </div>
+            </div>
+            
+            <div class="group-card" data-group="mci">
+                <div class="group-card-icon">
+                    <i class="fas fa-user-friends"></i>
+                </div>
+                <div class="group-card-info">
+                    <h4 data-lang-key="mciGroup">轻度认知障碍组</h4>
+                    <p data-lang-key="mciDesc">轻度认知功能障碍被试</p>
+                </div>
+            </div>
+            
+            <div class="group-card" data-group="ad">
+                <div class="group-card-icon">
+                    <i class="fas fa-user-injured"></i>
+                </div>
+                <div class="group-card-info">
+                    <h4 data-lang-key="adGroup">阿尔茨海默组</h4>
+                    <p data-lang-key="adDesc">阿尔茨海默病被试</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="group-actions">
+            <button class="btn btn-secondary" onclick="backToUpload()">
+                <i class="fas fa-arrow-left"></i>
+                <span data-lang-key="prevStep">上一步</span>
+            </button>
+            <button class="btn btn-success" id="startProcessBtn" onclick="startProcessing()" disabled>
+                <i class="fas fa-play"></i>
+                <span data-lang-key="startProcess">开始处理</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- 处理进度区域 -->
+    <div class="processing-section" id="processingSection" style="display: none;">
+        <h3><i class="fas fa-cogs"></i> <span data-lang-key="processingData">正在处理数据</span></h3>
+        
+        <!-- 整体进度 -->
+        <div class="overall-progress">
+            <div class="progress-label">
+                <span data-lang-key="overallProgress">整体进度</span>
+                <span id="overallProgressText">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="overallProgressBar"></div>
+            </div>
+        </div>
+        
+        <!-- 当前任务 -->
+        <div class="current-task">
+            <h4 data-lang-key="currentTask">当前任务</h4>
+            <div class="task-info">
+                <div class="task-icon"><i class="fas fa-spinner fa-spin"></i></div>
+                <div class="task-text" id="currentTaskText">准备开始...</div>
+            </div>
+        </div>
+        
+        <!-- 处理日志 -->
+        <div class="processing-log">
+            <h4><i class="fas fa-list-alt"></i> <span data-lang-key="processingLog">处理日志</span></h4>
+            <div class="log-container" id="logContainer">
+                <div class="log-item">
+                    <span class="log-time">[00:00:00]</span>
+                    <span class="log-text">等待开始...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 完成区域 -->
+    <div class="completion-section" id="completionSection" style="display: none;">
+        <div class="completion-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <h2 data-lang-key="processingComplete">数据处理完成！</h2>
+        <p data-lang-key="processingCompleteDesc">所有文件已成功处理并添加到系统中</p>
+        
+        <div class="completion-stats" id="completionStats">
+            <!-- 统计信息将在此显示 -->
+        </div>
+        
+        <div class="completion-actions">
+            <button class="btn btn-success" onclick="goToVisualization()">
+                <i class="fas fa-chart-line"></i>
+                <span data-lang-key="viewData">查看数据</span>
+            </button>
+            <button class="btn btn-secondary" onclick="startNewImport()">
+                <i class="fas fa-plus"></i>
+                <span data-lang-key="importMore">导入更多</span>
+            </button>
+        </div>
+    </div>
+</div>
+</div>
+    </div>
+    
+    <!-- 右侧状态区域 -->
+    <div class="import-sidebar">
+        <div class="import-status-panel">
+            <div class="status-header">
+                <h3><i class="fas fa-info-circle"></i> <span data-lang-key="importStatus">导入状态</span></h3>
+            </div>
+            
+            <!-- 文件要求说明 -->
+            <div class="file-requirements" id="fileRequirements">
+                <h4><i class="fas fa-list-check"></i> <span data-lang-key="fileRequirements">文件要求</span></h4>
+                <div class="requirement-list">
+                    <div class="requirement-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span data-lang-key="req1">必须上传5个txt文件</span>
+                    </div>
+                    <div class="requirement-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span data-lang-key="req2">文件名必须是: 1.txt, 2.txt, 3.txt, 4.txt, 5.txt 或 level_1.txt, level_2.txt, level_3.txt, level_4.txt, level_5.txt</span>
+                    </div>
+                    <div class="requirement-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span data-lang-key="req3">代表同一被试的Q1-Q5数据</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 文件验证状态 -->
+            <div class="validation-status" id="validationStatus" style="display: none;">
+                <h4><i class="fas fa-clipboard-check"></i> <span data-lang-key="validationStatus">验证状态</span></h4>
+                <div class="validation-list" id="validationList">
+                    <!-- 验证项目将在这里显示 -->
+                </div>
+            </div>
+            
+            <!-- 处理结果预览 -->
+            <div class="process-preview" id="processPreview" style="display: none;">
+                <h4><i class="fas fa-eye"></i> <span data-lang-key="processPreview">处理预览</span></h4>
+                <div class="preview-content" id="previewContent">
+                    <!-- 处理结果预览将在这里显示 -->
+                </div>
+            </div>
+                                     </div>
+    </div>
+</div>

@@ -1,0 +1,36 @@
+{
+  "rqa_config": "m2_tau1_eps0.06_lmin2",
+  "generated_at": "2025-08-01T22:05:48.258354",
+  "record_count": 300,
+  "features": [
+    "session_id",
+    "subject_id",
+    "task_id",
+    "group_type",
+    "game_duration",
+    "roi_kw_time",
+    "roi_inst_time",
+    "roi_bg_time",
+    "rr_1d",
+    "det_1d",
+    "ent_1d",
+    "rr_2d",
+    "det_2d",
+    "ent_2d",
+    "game_duration_norm",
+    "roi_kw_time_norm",
+    "roi_inst_time_norm",
+    "roi_bg_time_norm",
+    "rr_1d_norm",
+    "det_1d_norm",
+    "ent_1d_norm",
+    "rr_2d_norm",
+    "det_2d_norm",
+    "ent_2d_norm"
+  ],
+  "data_sources": {
+    "calibrated_data": "game_duration",
+    "roi_events": "roi_*_time",
+    "rqa_results": "rr_*, det_*, ent_*"
+  }
+}

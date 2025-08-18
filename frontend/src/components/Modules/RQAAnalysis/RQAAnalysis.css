@@ -1,0 +1,7 @@
+.rqa-analysis-module {
+  /* RQA分析模块特定样式 */
+}
+
+.rqa-analysis-module .module-content {
+  min-height: 500px;
+}

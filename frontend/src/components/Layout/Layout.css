@@ -1,0 +1,53 @@
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.layout-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 60px; /* 默认侧边栏宽度 */
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  background: #f8fafc;
+}
+
+.sidebar-expanded .main-content {
+  margin-left: 220px; /* 展开后的侧边栏宽度 */
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .sidebar-expanded .main-content {
+    margin-left: 0;
+  }
+  
+  .layout-body {
+    position: relative;
+  }
+}
+
+/* 移动端覆盖层 */
+@media (max-width: 768px) {
+  .sidebar-expanded::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+}

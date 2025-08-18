@@ -1,0 +1,57 @@
+# 模块10-B PyTorch训练引擎 - 默认配置
+# ================================================
+
+# 全局设置
+device: "cuda:0"             # GPU设备："cuda:0" 或 "cpu" (RTX 3080)
+save_root: "models"          # 权重输出根目录
+log_root: "runs"             # TensorBoard日志目录
+seed: 42                     # 随机种子
+
+# 网络结构
+arch:
+  input_dim: 10              # 输入特征维度
+  h1: 32                     # 第一隐藏层神经元数
+  h2: 16                     # 第二隐藏层神经元数
+  dropout: 0.25              # Dropout比例 (0=关闭)
+  output_dim: 1              # 输出维度（单个MMSE子分数）
+  use_batch_norm: false      # 是否使用批归一化
+  activation: "relu"         # 激活函数类型
+
+# 训练超参数
+training:
+  batch_size: 32             # 批大小 (GPU优化)
+  epochs: 400                # 最大训练轮数
+  lr: 0.001                  # 学习率
+  val_split: 0.2             # 验证集比例
+  early_stop_patience: 20    # 早停耐心值
+
+# 学习率调度器
+lr_scheduler:
+  enable: true               # 是否启用学习率调度
+  factor: 0.5                # 学习率衰减因子
+  patience: 8                # 调度器耐心值
+  min_lr: 0.00001            # 最小学习率
+  verbose: true              # 是否打印调度信息
+
+# 日志和保存设置
+logging:
+  save_interval: 10          # 每N个epoch保存一次模型
+  log_interval: 1            # 每N个epoch记录一次日志
+  metrics_log: true          # 是否记录详细指标
+
+# 数据增强（可选）
+augmentation:
+  enable: false              # 是否启用数据增强
+  noise_std: 0.01            # 高斯噪声标准差
+  
+# 模型正则化
+regularization:
+  weight_decay: 0.0001       # L2正则化权重衰减
+  grad_clip_norm: 1.0        # 梯度裁剪阈值
+
+# 交叉验证设置
+cross_validation:
+  enable: false              # 是否启用交叉验证
+  folds: 5                   # 交叉验证折数
+  shuffle: true              # 是否打乱数据
+  random_state: 42           # 随机种子
