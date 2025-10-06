@@ -1,0 +1,21 @@
+{
+  "title": "Pusat Pengurusan Data",
+  "subtitle": "Pengurusan Sumber Data Dwi",
+  "scanner": {
+    "title": "Pengimbasan Data",
+    "button": "Imbas Semua Sumber Data",
+    "scanning": "Mengimbas...",
+    "success": "Pengimbasan selesai!",
+    "error": "Pengimbasan gagal"
+  },
+  "importer": {
+    "title": "Import Data",
+    "button": "Mula Import",
+    "importing": "Mengimport...",
+    "success": "Import berjaya! {{count}} subjek diimport"
+  },
+  "subjectList": {
+    "title": "Senarai Subjek",
+    "count": "{{count}} subjek"
+  }
+}

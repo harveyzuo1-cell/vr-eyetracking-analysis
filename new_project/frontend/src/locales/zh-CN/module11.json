@@ -1,0 +1,62 @@
+{
+  "configManagement": "配置管理中心",
+  "configManagementDescription": "管理ROI配置、系统参数等",
+  "roiConfigEditor": "ROI配置编辑器",
+  "systemSettings": "系统设置",
+  "comingSoon": "功能开发中，敬请期待...",
+  
+  "roiCanvas": "ROI画布",
+  "roiList": "ROI列表",
+  "roiProperties": "ROI属性",
+  "roiStatistics": "ROI统计",
+  
+  "roiType_KW": "关键词ROI",
+  "roiType_INST": "指示语ROI",
+  "roiType_BG": "背景ROI",
+  
+  "drawingTools": "绘制工具",
+  "cancelDrawing": "取消绘制",
+  "drawingModeHint": "点击画布并拖动鼠标绘制矩形",
+  "drawingInstructions": "提示：选择工具后，在画布上拖动鼠标绘制ROI矩形",
+  "drawingModeActive": "{{mode}}绘制模式已激活",
+  
+  "selectBackgroundImage": "选择背景图片",
+  "uploadImage": "上传图片",
+  "uploadBackgroundImage": "上传背景图片",
+  "clickOrDragToUpload": "点击或拖拽文件到此区域上传",
+  "supportPngJpg": "支持 PNG, JPG 格式",
+  "backgroundImageLoaded": "背景图片加载成功",
+  "loadBackgroundImageFailed": "加载背景图片失败",
+  "uploadSuccess": "上传成功",
+  "uploadFailed": "上传失败",
+  "loadImagesFailed": "加载图片列表失败",
+  
+  "roiConfigLoaded": "ROI配置加载成功",
+  "loadRoiConfigFailed": "加载ROI配置失败",
+  "roiConfigSaved": "ROI配置保存成功",
+  "saveRoiConfigFailed": "保存ROI配置失败",
+  "hasUnsavedChanges": "有未保存的更改",
+  
+  "pleaseSelectTask": "请先选择任务",
+  "pleaseSelectBackgroundImage": "请选择背景图片以开始配置ROI",
+  
+  "roiAdded": "ROI添加成功",
+  "roiDeleted": "ROI删除成功",
+  "confirmDeleteRoi": "确认删除ROI",
+  "confirmDeleteRoiMessage": "删除后无法恢复，确定要删除此ROI吗？",
+  "roiTooSmall": "ROI区域太小，请绘制更大的区域",
+  "generateRoiIdFailed": "生成ROI ID失败",
+  
+  "noRoiDefined": "暂无ROI定义",
+  "total": "总计",
+  
+  "roiId": "ROI ID",
+  "roiLabel": "标签",
+  "optional": "可选",
+  "normalizedCoordinates": "归一化坐标 [0-1]",
+  "pixelCoordinates": "像素坐标",
+  "width": "宽度",
+  "height": "高度"
+}
+
+

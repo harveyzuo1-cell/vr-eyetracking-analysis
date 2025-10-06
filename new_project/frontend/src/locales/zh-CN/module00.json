@@ -1,0 +1,21 @@
+{
+  "title": "数据管理中心",
+  "subtitle": "双数据源统一管理",
+  "scanner": {
+    "title": "数据扫描",
+    "button": "扫描所有数据源",
+    "scanning": "扫描中...",
+    "success": "扫描完成！",
+    "error": "扫描失败"
+  },
+  "importer": {
+    "title": "数据导入",
+    "button": "开始导入",
+    "importing": "导入中...",
+    "success": "导入成功！共导入 {{count}} 名受试者"
+  },
+  "subjectList": {
+    "title": "受试者列表",
+    "count": "{{count}}名"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "app": {
+    "title": "VR眼球追踪数据分析平台"
+  },
+  "nav": {
+    "dashboard": "仪表盘",
+    "module00": "数据管理",
+    "module01": "数据上传"
+  },
+  "actions": {
+    "submit": "提交",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "search": "搜索",
+    "export": "导出",
+    "import": "导入"
+  },
+  "status": {
+    "loading": "加载中...",
+    "success": "操作成功",
+    "error": "操作失败",
+    "noData": "暂无数据"
+  }
+}

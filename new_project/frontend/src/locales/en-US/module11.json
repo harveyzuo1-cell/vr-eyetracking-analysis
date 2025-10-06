@@ -1,0 +1,62 @@
+{
+  "configManagement": "Configuration Management",
+  "configManagementDescription": "Manage ROI configurations, system parameters, etc.",
+  "roiConfigEditor": "ROI Configuration Editor",
+  "systemSettings": "System Settings",
+  "comingSoon": "Feature coming soon...",
+  
+  "roiCanvas": "ROI Canvas",
+  "roiList": "ROI List",
+  "roiProperties": "ROI Properties",
+  "roiStatistics": "ROI Statistics",
+  
+  "roiType_KW": "Keyword ROI",
+  "roiType_INST": "Instruction ROI",
+  "roiType_BG": "Background ROI",
+  
+  "drawingTools": "Drawing Tools",
+  "cancelDrawing": "Cancel Drawing",
+  "drawingModeHint": "Click and drag on canvas to draw rectangle",
+  "drawingInstructions": "Tip: Select a tool, then drag on canvas to draw ROI rectangle",
+  "drawingModeActive": "{{mode}} drawing mode activated",
+  
+  "selectBackgroundImage": "Select Background Image",
+  "uploadImage": "Upload Image",
+  "uploadBackgroundImage": "Upload Background Image",
+  "clickOrDragToUpload": "Click or drag file to upload",
+  "supportPngJpg": "Support PNG, JPG formats",
+  "backgroundImageLoaded": "Background image loaded successfully",
+  "loadBackgroundImageFailed": "Failed to load background image",
+  "uploadSuccess": "Upload successful",
+  "uploadFailed": "Upload failed",
+  "loadImagesFailed": "Failed to load image list",
+  
+  "roiConfigLoaded": "ROI configuration loaded successfully",
+  "loadRoiConfigFailed": "Failed to load ROI configuration",
+  "roiConfigSaved": "ROI configuration saved successfully",
+  "saveRoiConfigFailed": "Failed to save ROI configuration",
+  "hasUnsavedChanges": "Unsaved changes",
+  
+  "pleaseSelectTask": "Please select a task first",
+  "pleaseSelectBackgroundImage": "Please select a background image to start configuring ROI",
+  
+  "roiAdded": "ROI added successfully",
+  "roiDeleted": "ROI deleted successfully",
+  "confirmDeleteRoi": "Confirm Delete ROI",
+  "confirmDeleteRoiMessage": "This action cannot be undone. Are you sure to delete this ROI?",
+  "roiTooSmall": "ROI area too small, please draw a larger area",
+  "generateRoiIdFailed": "Failed to generate ROI ID",
+  
+  "noRoiDefined": "No ROI defined",
+  "total": "Total",
+  
+  "roiId": "ROI ID",
+  "roiLabel": "Label",
+  "optional": "Optional",
+  "normalizedCoordinates": "Normalized Coordinates [0-1]",
+  "pixelCoordinates": "Pixel Coordinates",
+  "width": "Width",
+  "height": "Height"
+}
+
+

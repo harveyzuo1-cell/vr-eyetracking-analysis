@@ -31,6 +31,7 @@ class ModelEvaluator:
         self.tasks = EVALUATION_CONFIG["tasks"]
         self.model_cache = {}  # 模型缓存
         self.data_cache = {}   # 数据缓存
+        self.cache_timestamps = {}  # 缓存时间戳跟踪 {cache_key: file_mtime}
         
         logger.info(f"模型评估器初始化完成，使用设备: {self.device}")
     
@@ -119,12 +120,33 @@ class ModelEvaluator:
         
         for task in self.tasks:
             cache_key = f"{rqa_sig}_{task}"
-            
-            if cache_key in self.model_cache:
-                models_dict[task] = self.model_cache[cache_key]
-                continue
-            
             model_path = get_model_path(rqa_sig, task)
+            
+            # 检查缓存和文件修改时间
+            if cache_key in self.model_cache:
+                cached_time = self.cache_timestamps.get(cache_key, 0)
+                
+                try:
+                    file_mtime = model_path.stat().st_mtime
+                    
+                    # 如果文件更新了，清除缓存
+                    if file_mtime > cached_time:
+                        logger.info(f"检测到模型更新，重新加载: {task} (文件时间: {file_mtime}, 缓存时间: {cached_time})")
+                        del self.model_cache[cache_key]
+                        if cache_key in self.cache_timestamps:
+                            del self.cache_timestamps[cache_key]
+                    else:
+                        # 使用缓存的模型
+                        models_dict[task] = self.model_cache[cache_key]
+                        logger.debug(f"使用缓存模型: {task}")
+                        continue
+                except (OSError, FileNotFoundError):
+                    # 文件不存在，清除缓存
+                    logger.warning(f"模型文件不存在，清除缓存: {task}")
+                    if cache_key in self.model_cache:
+                        del self.model_cache[cache_key]
+                    if cache_key in self.cache_timestamps:
+                        del self.cache_timestamps[cache_key]
             try:
                 checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
                 
@@ -189,6 +211,13 @@ class ModelEvaluator:
                 # 缓存模型
                 if len(self.model_cache) < EVALUATION_CONFIG["model_cache_size"]:
                     self.model_cache[cache_key] = model
+                    # 记录文件修改时间戳
+                    try:
+                        file_mtime = model_path.stat().st_mtime
+                        self.cache_timestamps[cache_key] = file_mtime
+                        logger.debug(f"记录模型时间戳: {task} -> {file_mtime}")
+                    except (OSError, FileNotFoundError):
+                        logger.warning(f"无法获取模型文件时间戳: {task}")
                 
                 models_dict[task] = model
                 logger.info(f"模型加载成功: {task}")

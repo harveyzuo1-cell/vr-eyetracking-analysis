@@ -1,0 +1,79 @@
+{
+    "version": "v2",
+    "layout": "new",
+    "description": "新版ROI布局(2025-03+数据,94个受试者)",
+    "created_date": "2025-10-02",
+    "regions": [
+        {
+            "id": "q1_time_orientation",
+            "name": "Q1_时间定向区",
+            "task": "q1",
+            "x": 0.15,
+            "y": 0.25,
+            "width": 0.35,
+            "height": 0.22,
+            "color": "#FF6B6B",
+            "description": "时间定向任务关键区域(新版布局)"
+        },
+        {
+            "id": "q2_space_orientation",
+            "name": "Q2_空间定向区",
+            "task": "q2",
+            "x": 0.55,
+            "y": 0.25,
+            "width": 0.35,
+            "height": 0.22,
+            "color": "#4ECDC4",
+            "description": "空间定向任务关键区域(新版布局)"
+        },
+        {
+            "id": "q3_immediate_memory",
+            "name": "Q3_即刻记忆区",
+            "task": "q3",
+            "x": 0.12,
+            "y": 0.52,
+            "width": 0.35,
+            "height": 0.22,
+            "color": "#FFE66D",
+            "description": "即刻记忆任务关键区域(新版布局)"
+        },
+        {
+            "id": "q4_attention_calculation",
+            "name": "Q4_注意力与计算区",
+            "task": "q4",
+            "x": 0.53,
+            "y": 0.52,
+            "width": 0.35,
+            "height": 0.22,
+            "color": "#95E1D3",
+            "description": "注意力与计算任务关键区域(新版布局)"
+        },
+        {
+            "id": "q5_delayed_recall",
+            "name": "Q5_延迟回忆区",
+            "task": "q5",
+            "x": 0.32,
+            "y": 0.75,
+            "width": 0.36,
+            "height": 0.2,
+            "color": "#C7CEEA",
+            "description": "延迟回忆任务关键区域(新版布局)"
+        }
+    ],
+    "metadata": {
+        "total_subjects": 94,
+        "groups": {
+            "control": "~32",
+            "mci": "~32",
+            "ad": "~30"
+        },
+        "data_period": "2025-03 ~ 2025-04",
+        "source": "eye_tracking_data/"
+    },
+    "changes_from_v1": [
+        "微调了所有ROI区域的x坐标(+0.02~0.05)",
+        "微调了所有ROI区域的y坐标(+0.02~0.05)",
+        "扩大了部分区域的width和height",
+        "更新了区域布局以适应新版VR系统"
+    ]
+}

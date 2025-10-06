@@ -1,0 +1,147 @@
+{
+  "version": "1.0.0",
+  "last_modified": "2025-10-03T17:00:00Z",
+  "description": "任务配置中心 - 支持动态任务扩展",
+  "datasets": {
+    "mmse_v1": {
+      "id": "mmse_v1",
+      "name": "MMSE认知评估 (V1版本)",
+      "name_en": "MMSE Cognitive Assessment (V1)",
+      "description": "包含5个MMSE任务的眼动数据 (2025年1月数据集,65个受试者)",
+      "data_version": "v1",
+      "created_date": "2025-01-01",
+      "tasks": [
+        {
+          "id": "q1",
+          "alt_ids": ["task1", "Q1"],
+          "name": "时间定向",
+          "name_en": "Time Orientation",
+          "description": "评估受试者对时间的定向能力",
+          "order": 1,
+          "background_image": "Q1.jpg",
+          "roi_config": "q1_roi.json",
+          "required": true,
+          "category": "orientation"
+        },
+        {
+          "id": "q2",
+          "alt_ids": ["task2", "Q2"],
+          "name": "地点定向",
+          "name_en": "Place Orientation",
+          "description": "评估受试者对地点的定向能力",
+          "order": 2,
+          "background_image": "Q2.jpg",
+          "roi_config": "q2_roi.json",
+          "required": true,
+          "category": "orientation"
+        },
+        {
+          "id": "q3",
+          "alt_ids": ["task3", "Q3"],
+          "name": "记忆",
+          "name_en": "Memory",
+          "description": "评估受试者的即时记忆能力",
+          "order": 3,
+          "background_image": "Q3.jpg",
+          "roi_config": "q3_roi.json",
+          "required": true,
+          "category": "memory"
+        },
+        {
+          "id": "q4",
+          "alt_ids": ["task4", "Q4"],
+          "name": "注意与计算",
+          "name_en": "Attention and Calculation",
+          "description": "评估受试者的注意力和计算能力",
+          "order": 4,
+          "background_image": "Q4.jpg",
+          "roi_config": "q4_roi.json",
+          "required": true,
+          "category": "attention"
+        },
+        {
+          "id": "q5",
+          "alt_ids": ["task5", "Q5"],
+          "name": "回忆",
+          "name_en": "Recall",
+          "description": "评估受试者的延迟回忆能力",
+          "order": 5,
+          "background_image": "Q5.jpg",
+          "roi_config": "q5_roi.json",
+          "required": true,
+          "category": "memory"
+        }
+      ]
+    },
+    "mmse_v2": {
+      "id": "mmse_v2",
+      "name": "MMSE认知评估 (V2版本)",
+      "name_en": "MMSE Cognitive Assessment (V2)",
+      "description": "新版MMSE眼动数据集 (高分辨率2400x2400)",
+      "data_version": "v2",
+      "created_date": "2025-03-01",
+      "tasks": [
+        {
+          "id": "q1",
+          "alt_ids": ["task1"],
+          "name": "时间定向",
+          "name_en": "Time Orientation",
+          "description": "评估受试者对时间的定向能力 (V2版本)",
+          "order": 1,
+          "background_image": "task1.png",
+          "roi_config": "q1_roi.json",
+          "required": true,
+          "category": "orientation"
+        },
+        {
+          "id": "q2",
+          "alt_ids": ["task2"],
+          "name": "地点定向",
+          "name_en": "Place Orientation",
+          "description": "评估受试者对地点的定向能力 (V2版本)",
+          "order": 2,
+          "background_image": "task2.png",
+          "roi_config": "q2_roi.json",
+          "required": true,
+          "category": "orientation"
+        },
+        {
+          "id": "q3",
+          "alt_ids": ["task3"],
+          "name": "记忆",
+          "name_en": "Memory",
+          "description": "评估受试者的即时记忆能力 (V2版本)",
+          "order": 3,
+          "background_image": "task3.png",
+          "roi_config": "q3_roi.json",
+          "required": true,
+          "category": "memory"
+        },
+        {
+          "id": "q4",
+          "alt_ids": ["task4"],
+          "name": "注意与计算",
+          "name_en": "Attention and Calculation",
+          "description": "评估受试者的注意力和计算能力 (V2版本)",
+          "order": 4,
+          "background_image": "task4.png",
+          "roi_config": "q4_roi.json",
+          "required": true,
+          "category": "attention"
+        },
+        {
+          "id": "q5",
+          "alt_ids": ["task5"],
+          "name": "回忆",
+          "name_en": "Recall",
+          "description": "评估受试者的延迟回忆能力 (V2版本)",
+          "order": 5,
+          "background_image": "task5.png",
+          "roi_config": "q5_roi.json",
+          "required": true,
+          "category": "memory"
+        }
+      ]
+    }
+  }
+}

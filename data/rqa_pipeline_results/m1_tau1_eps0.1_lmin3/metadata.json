@@ -1,0 +1,15 @@
+{
+  "signature": "m1_tau1_eps0.1_lmin3",
+  "parameters": {
+    "m": 1,
+    "tau": 1,
+    "eps": 0.1,
+    "lmin": 3
+  },
+  "last_updated": "2025-10-01T18:31:31.288311",
+  "step_1_completed": true,
+  "step_2_completed": true,
+  "step_3_completed": true,
+  "step_4_completed": true,
+  "step_5_completed": true
+}

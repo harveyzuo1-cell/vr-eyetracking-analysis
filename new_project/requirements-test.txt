@@ -1,0 +1,25 @@
+# Test Dependencies
+
+# Core testing framework
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-flask==1.3.0
+
+# Testing utilities
+pytest-xdist==3.5.0
+pytest-timeout==2.2.0
+pytest-html==4.1.1
+pytest-json-report==1.5.0
+
+# Code quality
+pytest-flake8==1.1.1
+pytest-pylint==0.21.0
+
+# Coverage tools
+coverage==7.3.4
+
+# Other testing tools
+faker==20.1.0
+freezegun==1.4.0
+responses==0.24.1

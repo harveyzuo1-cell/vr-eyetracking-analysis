@@ -1,0 +1,62 @@
+{
+  "configManagement": "Pengurusan Konfigurasi",
+  "configManagementDescription": "Urus konfigurasi ROI, parameter sistem, dll.",
+  "roiConfigEditor": "Editor Konfigurasi ROI",
+  "systemSettings": "Tetapan Sistem",
+  "comingSoon": "Ciri akan datang...",
+  
+  "roiCanvas": "Kanvas ROI",
+  "roiList": "Senarai ROI",
+  "roiProperties": "Sifat ROI",
+  "roiStatistics": "Statistik ROI",
+  
+  "roiType_KW": "Kata Kunci ROI",
+  "roiType_INST": "Arahan ROI",
+  "roiType_BG": "Latar Belakang ROI",
+  
+  "drawingTools": "Alat Lukisan",
+  "cancelDrawing": "Batal Lukisan",
+  "drawingModeHint": "Klik dan seret pada kanvas untuk melukis segi empat tepat",
+  "drawingInstructions": "Petua: Pilih alat, kemudian seret pada kanvas untuk melukis segi empat tepat ROI",
+  "drawingModeActive": "Mod lukisan {{mode}} diaktifkan",
+  
+  "selectBackgroundImage": "Pilih Imej Latar Belakang",
+  "uploadImage": "Muat Naik Imej",
+  "uploadBackgroundImage": "Muat Naik Imej Latar Belakang",
+  "clickOrDragToUpload": "Klik atau seret fail untuk muat naik",
+  "supportPngJpg": "Sokong format PNG, JPG",
+  "backgroundImageLoaded": "Imej latar belakang berjaya dimuatkan",
+  "loadBackgroundImageFailed": "Gagal memuatkan imej latar belakang",
+  "uploadSuccess": "Muat naik berjaya",
+  "uploadFailed": "Muat naik gagal",
+  "loadImagesFailed": "Gagal memuatkan senarai imej",
+  
+  "roiConfigLoaded": "Konfigurasi ROI berjaya dimuatkan",
+  "loadRoiConfigFailed": "Gagal memuatkan konfigurasi ROI",
+  "roiConfigSaved": "Konfigurasi ROI berjaya disimpan",
+  "saveRoiConfigFailed": "Gagal menyimpan konfigurasi ROI",
+  "hasUnsavedChanges": "Perubahan tidak disimpan",
+  
+  "pleaseSelectTask": "Sila pilih tugas terlebih dahulu",
+  "pleaseSelectBackgroundImage": "Sila pilih imej latar belakang untuk mula mengkonfigurasi ROI",
+  
+  "roiAdded": "ROI berjaya ditambah",
+  "roiDeleted": "ROI berjaya dipadam",
+  "confirmDeleteRoi": "Sahkan Padam ROI",
+  "confirmDeleteRoiMessage": "Tindakan ini tidak boleh dibuat asal. Adakah anda pasti untuk memadam ROI ini?",
+  "roiTooSmall": "Kawasan ROI terlalu kecil, sila lukis kawasan yang lebih besar",
+  "generateRoiIdFailed": "Gagal menjana ID ROI",
+  
+  "noRoiDefined": "Tiada ROI ditakrifkan",
+  "total": "Jumlah",
+  
+  "roiId": "ID ROI",
+  "roiLabel": "Label",
+  "optional": "Pilihan",
+  "normalizedCoordinates": "Koordinat Normalisasi [0-1]",
+  "pixelCoordinates": "Koordinat Piksel",
+  "width": "Lebar",
+  "height": "Tinggi"
+}
+
+

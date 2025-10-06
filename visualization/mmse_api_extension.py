@@ -88,13 +88,13 @@ def register_mmse_routes(app):
                                 'performance_ratio': task['mmse_score'] / task['mmse_max_score'],
                                 'subQuestions': generate_sub_questions(task['task_id'], row)
                             })
-                
-                return jsonify(result)
+
+                return jsonify({'success': True, 'data': result})
             else:
-                return jsonify({'error': '控制组MMSE数据文件不存在'}), 404
+                return jsonify({'success': False, 'error': '控制组MMSE数据文件不存在'}), 404
                 
         except Exception as e:
-            return jsonify({'error': f'读取控制组MMSE数据失败: {str(e)}'}), 500
+            return jsonify({'success': False, 'error': f'读取控制组MMSE数据失败: {str(e)}'}), 500
 
     @app.route('/api/mmse-scores/mci', methods=['GET'])
     def get_mci_mmse_scores():
@@ -104,7 +104,7 @@ def register_mmse_routes(app):
             file_path = os.path.join('data', 'MMSE_Score', '轻度认知障碍组.csv')
             if os.path.exists(file_path):
                 df = pd.read_csv(file_path)
-                
+
                 # 转换数据格式（与控制组相同的逻辑）
                 result = []
                 for _, row in df.iterrows():
@@ -115,9 +115,9 @@ def register_mmse_routes(app):
                         q3_score = row.get('即刻记忆', 0)
                         q4_score = sum([row.get('100-7', 0), row.get('93-7', 0), row.get('86-7', 0), row.get('79-7', 0), row.get('72-7', 0)])
                         q5_score = sum([row.get('词1', 0), row.get('词2', 0), row.get('词3', 0)])
-                        
+
                         subject_id = row['受试者']
-                        
+
                         # 为每个任务创建记录
                         tasks_scores = [
                             {'task_id': 'Q1', 'mmse_score': q1_score, 'mmse_max_score': 5},
@@ -126,7 +126,7 @@ def register_mmse_routes(app):
                             {'task_id': 'Q4', 'mmse_score': q4_score, 'mmse_max_score': 5},
                             {'task_id': 'Q5', 'mmse_score': q5_score, 'mmse_max_score': 3}
                         ]
-                        
+
                         for task in tasks_scores:
                             result.append({
                                 'subject_id': subject_id,
@@ -136,13 +136,13 @@ def register_mmse_routes(app):
                                 'performance_ratio': task['mmse_score'] / task['mmse_max_score'],
                                 'subQuestions': generate_sub_questions(task['task_id'], row)
                             })
-                
-                return jsonify(result)
+
+                return jsonify({'success': True, 'data': result})
             else:
-                return jsonify({'error': 'MCI组MMSE数据文件不存在'}), 404
+                return jsonify({'success': False, 'error': 'MCI组MMSE数据文件不存在'}), 404
                 
         except Exception as e:
-            return jsonify({'error': f'读取MCI组MMSE数据失败: {str(e)}'}), 500
+            return jsonify({'success': False, 'error': f'读取MCI组MMSE数据失败: {str(e)}'}), 500
 
     @app.route('/api/mmse-scores/ad', methods=['GET'])
     def get_ad_mmse_scores():
@@ -152,7 +152,7 @@ def register_mmse_routes(app):
             file_path = os.path.join('data', 'MMSE_Score', '阿尔兹海默症组.csv')
             if os.path.exists(file_path):
                 df = pd.read_csv(file_path)
-                
+
                 # 转换数据格式（与控制组相同的逻辑）
                 result = []
                 for _, row in df.iterrows():
@@ -165,9 +165,9 @@ def register_mmse_routes(app):
                         q3_score = row.get('即刻记忆', 0)
                         q4_score = sum([row.get('100-7', 0), row.get('93-7', 0), row.get('86-7', 0), row.get('79-7', 0), row.get('72-7', 0)])
                         q5_score = sum([row.get('词1', 0), row.get('词2', 0), row.get('词3', 0)])
-                        
+
                         subject_id = row[subject_col]
-                        
+
                         # 为每个任务创建记录
                         tasks_scores = [
                             {'task_id': 'Q1', 'mmse_score': q1_score, 'mmse_max_score': 5},
@@ -176,7 +176,7 @@ def register_mmse_routes(app):
                             {'task_id': 'Q4', 'mmse_score': q4_score, 'mmse_max_score': 5},
                             {'task_id': 'Q5', 'mmse_score': q5_score, 'mmse_max_score': 3}
                         ]
-                        
+
                         for task in tasks_scores:
                             result.append({
                                 'subject_id': subject_id,
@@ -186,13 +186,13 @@ def register_mmse_routes(app):
                                 'performance_ratio': task['mmse_score'] / task['mmse_max_score'],
                                 'subQuestions': generate_sub_questions(task['task_id'], row)
                             })
-                
-                return jsonify(result)
+
+                return jsonify({'success': True, 'data': result})
             else:
-                return jsonify({'error': 'AD组MMSE数据文件不存在'}), 404
+                return jsonify({'success': False, 'error': 'AD组MMSE数据文件不存在'}), 404
                 
         except Exception as e:
-            return jsonify({'error': f'读取AD组MMSE数据失败: {str(e)}'}), 500
+            return jsonify({'success': False, 'error': f'读取AD组MMSE数据失败: {str(e)}'}), 500
 
     @app.route('/api/normalized-features', methods=['GET'])
     def get_normalized_features():

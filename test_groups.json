@@ -1,0 +1,20 @@
+{
+  "data": [
+    {
+      "count": 6,
+      "id": "control",
+      "name": "\u5bf9\u7167\u7ec4 (Control)"
+    },
+    {
+      "count": 6,
+      "id": "mci",
+      "name": "\u8f7b\u5ea6\u8ba4\u77e5\u969c\u788d (MCI)"
+    },
+    {
+      "count": 6,
+      "id": "ad",
+      "name": "\u963f\u5c14\u8328\u6d77\u9ed8\u75c7 (AD)"
+    }
+  ],
+  "success": true
+}

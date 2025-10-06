@@ -1,0 +1,29 @@
+{
+  "data": [
+    {
+      "count": 20,
+      "has_mmse": 0,
+      "id": "control",
+      "name": "\u5bf9\u7167\u7ec4",
+      "v1": 20,
+      "v2": 0
+    },
+    {
+      "count": 21,
+      "has_mmse": 0,
+      "id": "mci",
+      "name": "MCI\u7ec4",
+      "v1": 21,
+      "v2": 0
+    },
+    {
+      "count": 20,
+      "has_mmse": 0,
+      "id": "ad",
+      "name": "AD\u7ec4",
+      "v1": 20,
+      "v2": 0
+    }
+  ],
+  "success": true
+}

@@ -1,0 +1,21 @@
+{
+  "title": "Data Management Center",
+  "subtitle": "Dual Data Source Management",
+  "scanner": {
+    "title": "Data Scanning",
+    "button": "Scan All Data Sources",
+    "scanning": "Scanning...",
+    "success": "Scan completed!",
+    "error": "Scan failed"
+  },
+  "importer": {
+    "title": "Data Import",
+    "button": "Start Import",
+    "importing": "Importing...",
+    "success": "Import successful! {{count}} subjects imported"
+  },
+  "subjectList": {
+    "title": "Subject List",
+    "count": "{{count}} subjects"
+  }
+}

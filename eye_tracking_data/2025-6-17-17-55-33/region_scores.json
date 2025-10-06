@@ -1,0 +1,21 @@
+{
+    "game_scores": {
+        "game_1": 83.9,
+        "game_2": 85.06,
+        "game_3": 76.02,
+        "game_4": 64.52,
+        "game_5": 73.52
+    },
+    "total_score": 76.6,
+    "F1": 79.62,
+    "F1_description": "Strong executive function, orderly planning",
+    "F2": 76.75,
+    "F2_description": "Sharp spatial awareness, focused attention",
+    "F3": 79.96,
+    "F3_description": "Good memory formation, stable emotional regulation",
+    "F4": 74.79,
+    "F4_description": "Average visual integration, processing needs work",
+    "F5": 74.79,
+    "F5_description": "Fair auditory comprehension, language needs work",
+    "ai_diagnosis": "The overall cognitive performance score of 76.6 suggests moderate functioning, with strengths in memory, emotion, and association (F3) and motor coordination (F1). Game scores indicate variability, with higher performance in tasks likely involving attention and spatial skills (game_2) but lower in others (game_4). General advice: Engage in activities that challenge executive functions (e.g., puzzles, strategy games) and memory (e.g., learning new skills). Regular physical exercise may enhance motor and cognitive coordination. Monitor for consistency in performance and consider further evaluation if declines are noted in daily tasks. Maintain a balanced lifestyle with adequate sleep and stress management to support brain health."
+}

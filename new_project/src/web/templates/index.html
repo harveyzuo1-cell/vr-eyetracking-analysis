@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}主页 - VR Eye-Tracking Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-white p-5 rounded">
+            <h1 class="display-4">
+                <i class="fas fa-eye text-primary"></i>
+                VR眼球追踪数据分析平台
+            </h1>
+            <p class="lead">基于VR环境的眼动数据分析，用于认知障碍早期筛查研究</p>
+            <hr class="my-4">
+            <p>
+                本平台提供完整的眼动数据处理流程，包括数据预处理、RQA分析、事件检测、
+                特征提取、机器学习预测等功能。
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-database"></i> 数据管理
+            </div>
+            <div class="card-body">
+                <p>数据导入、预处理、校准等功能</p>
+                <p class="text-muted small">
+                    支持的组别: 控制组 (Control)、轻度认知障碍 (MCI)、阿尔茨海默症 (AD)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-line"></i> RQA分析
+            </div>
+            <div class="card-body">
+                <p>递归量化分析 (Recurrence Quantification Analysis)</p>
+                <p class="text-muted small">
+                    提取眼动数据的非线性动力学特征
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-brain"></i> 机器学习
+            </div>
+            <div class="card-body">
+                <p>认知障碍预测与分类</p>
+                <p class="text-muted small">
+                    基于眼动特征的MLP神经网络模型
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle"></i> 系统信息
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>平台版本</h6>
+                        <p id="system-version">加载中...</p>
+
+                        <h6>运行环境</h6>
+                        <p id="system-env">加载中...</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>GPU状态</h6>
+                        <p id="gpu-status">检测中...</p>
+
+                        <h6>数据目录</h6>
+                        <p class="small text-muted">
+                            原始数据 → 预处理 → 校准 → 特征提取 → 模型训练 → 结果输出
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5 class="alert-heading">
+                <i class="fas fa-rocket"></i> 快速开始
+            </h5>
+            <p>平台正在重构中，各模块功能将逐步上线。当前已完成：</p>
+            <ul>
+                <li>✅ 基础架构搭建</li>
+                <li>✅ 配置系统</li>
+                <li>✅ 核心工具类</li>
+                <li>⏳ 数据迁移脚本（开发中）</li>
+                <li>⏳ 各功能模块（待迁移）</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // 加载系统信息
+        $.get('/api/info', function(response) {
+            if (response.success) {
+                $('#system-version').text('v' + response.data.version);
+                $('#system-env').text(response.data.environment);
+            }
+        }).fail(function() {
+            $('#system-version').text('获取失败');
+            $('#system-env').text('获取失败');
+        });
+
+        // GPU状态检测
+        $('#gpu-status').html('<span class="text-warning">检测中...</span>');
+        setTimeout(function() {
+            $('#gpu-status').html('<span class="text-muted">暂未实现GPU状态API</span>');
+        }, 1000);
+    });
+</script>
+{% endblock %}

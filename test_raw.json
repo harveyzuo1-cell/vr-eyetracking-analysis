@@ -1,0 +1,7 @@
+{
+  "data": [],
+  "error": "unsupported operand type(s) for -: 'str' and 'str'",
+  "metadata": null,
+  "stats": null,
+  "success": false
+}

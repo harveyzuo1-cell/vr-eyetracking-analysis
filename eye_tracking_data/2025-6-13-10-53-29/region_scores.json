@@ -1,0 +1,21 @@
+{
+    "game_scores": {
+        "game_1": 35.84,
+        "game_2": 98.25,
+        "game_3": 76.8,
+        "game_4": 82.09,
+        "game_5": 87.52
+    },
+    "total_score": 76.1,
+    "F1": 74.6,
+    "F1_description": "Fair executive control, planning needs improvement",
+    "F2": 75.92,
+    "F2_description": "Sharp spatial awareness, focused attention",
+    "F3": 56.32,
+    "F3_description": "Weak memory formation, high emotional fluctuation",
+    "F4": 90.17,
+    "F4_description": "Quick visual processing, accurate recognition",
+    "F5": 90.17,
+    "F5_description": "Sharp auditory processing, fluent verbal expression",
+    "ai_diagnosis": "The overall score of 76.1 suggests moderate cognitive performance, with strengths in visual (F4) and auditory/language (F5) processing, but potential weaknesses in memory/emotion (F3). Game scores vary widely (35.84 to 98.25), indicating inconsistent performance across tasks. General advice: 1) Focus on memory and emotional regulation exercises to address lower F3 scores. 2) Consistent cognitive training could help stabilize performance variability. 3) Monitor for persistent difficulties in specific tasks (e.g., game_1's low score). Consider further evaluation if functional concerns arise. Maintain a balanced lifestyle (sleep, exercise, nutrition) to support brain health."
+}

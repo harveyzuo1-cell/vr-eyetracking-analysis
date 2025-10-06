@@ -278,6 +278,27 @@ class EnhancedWebVisualizer:
             print(f"⚠️  模块10-D 性能评估API不可用: {e}")
         except Exception as e:
             print(f"⚠️  模块10-D 初始化失败: {e}")
+        
+        # 集成模块10-E 关联性深度可视化API
+        try:
+            # 尝试导入模块10-E的Blueprint
+            try:
+                from backend.m10e_correlation.api import correlation_bp
+            except ImportError:
+                try:
+                    from m10e_correlation.api import correlation_bp
+                except ImportError:
+                    # 最后尝试相对导入
+                    from ..backend.m10e_correlation.api import correlation_bp
+
+            # 注册蓝图到 /api/m10e 路径前缀
+            self.app.register_blueprint(correlation_bp, url_prefix="/api/m10e")
+            
+            print("✅ 模块10-E 关联性深度可视化API已启用")
+        except ImportError as e:
+            print(f"⚠️  模块10-E 关联性分析API不可用: {e}")
+        except Exception as e:
+            print(f"⚠️  模块10-E 初始化失败: {e}")
     
     def get_default_colors(self) -> Dict:
         """获取默认颜色配置"""
@@ -1727,10 +1748,19 @@ class EnhancedWebVisualizer:
             except Exception as e:
                 print(f"❌ 读取文件失败: {e}")
                 return {'success': False, 'error': f'读取文件失败: {str(e)}'}
-            
-            # 检查必要的列
-            if 'x' not in df.columns or 'y' not in df.columns:
-                return {'success': False, 'error': '文件缺少x,y坐标列'}
+
+            # 检查必要的列，支持两种列名格式
+            if 'x' in df.columns and 'y' in df.columns:
+                pass  # 已经是标准列名
+            elif 'GazePointX_normalized' in df.columns and 'GazePointY_normalized' in df.columns:
+                # 重命名为标准列名
+                df = df.rename(columns={
+                    'GazePointX_normalized': 'x',
+                    'GazePointY_normalized': 'y'
+                })
+                print(f"✅ 已将列名从 GazePointX/Y_normalized 重命名为 x/y")
+            else:
+                return {'success': False, 'error': '文件缺少x,y或GazePointX_normalized,GazePointY_normalized坐标列'}
             
             original_count = len(df)
             

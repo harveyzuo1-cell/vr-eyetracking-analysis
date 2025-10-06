@@ -1,0 +1,25 @@
+{
+  "app": {
+    "title": "Platform Analisis Data Penjejakan Mata VR"
+  },
+  "nav": {
+    "dashboard": "Papan Pemuka",
+    "module00": "Pengurusan Data",
+    "module01": "Muat Naik Data"
+  },
+  "actions": {
+    "submit": "Hantar",
+    "cancel": "Batal",
+    "save": "Simpan",
+    "delete": "Padam",
+    "search": "Cari",
+    "export": "Eksport",
+    "import": "Import"
+  },
+  "status": {
+    "loading": "Memuatkan...",
+    "success": "Berjaya",
+    "error": "Ralat",
+    "noData": "Tiada Data"
+  }
+}

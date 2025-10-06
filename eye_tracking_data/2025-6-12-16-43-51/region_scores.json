@@ -1,0 +1,21 @@
+{
+    "game_scores": {
+        "game_1": 89.03,
+        "game_2": 87.36,
+        "game_3": 73.95,
+        "game_4": 69.68,
+        "game_5": 79.77
+    },
+    "total_score": 79.96,
+    "F1": 82.53,
+    "F1_description": "Strong executive function, orderly planning",
+    "F2": 81.46,
+    "F2_description": "Sharp spatial awareness, focused attention",
+    "F3": 81.49,
+    "F3_description": "Good memory formation, stable emotional regulation",
+    "F4": 78.52,
+    "F4_description": "Quick visual processing, accurate recognition",
+    "F5": 78.52,
+    "F5_description": "Sharp auditory processing, fluent verbal expression",
+    "ai_diagnosis": "Overall Performance Assessment: The total score (79.96) indicates above-average cognitive function, with strong executive skills (F1) and spatial attention (F2). Memory (F3) and sensory processing (F4, F5) are solid but slightly lower.  \n\nBrain Region Function Analysis: Executive function (planning, control) and spatial attention are strengths. Visual and auditory processing are adequate but show room for improvement, particularly in consistency (note lower game_4 score).  \n\nSpecific Improvement Suggestions:  \n1. Enhance visual processing (F4) with pattern recognition tasks (e.g., puzzles, speed reading).  \n2. Strengthen auditory-language skills (F5) via active listening exercises (e.g., audiobooks with recall).  \n3. Address variability in performance (game_3, game_4) with focused, timed tasks to build consistency.  \n4. Maintain high-performing areas (F1, F2) with complex problem-solving (e.g., strategy games).  \n\nPrioritize targeted exercises for weaker areas while sustaining strengths."
+}

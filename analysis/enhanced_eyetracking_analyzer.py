@@ -94,7 +94,16 @@ class EnhancedEyetrackingAnalyzer:
             df = pd.read_csv(file_path)
             if debug:
                 print(f"📊 数据点数: {len(df)}")
-            
+
+            # 支持两种列名格式
+            if 'GazePointX_normalized' in df.columns and 'GazePointY_normalized' in df.columns:
+                df = df.rename(columns={
+                    'GazePointX_normalized': 'x',
+                    'GazePointY_normalized': 'y'
+                })
+                if debug:
+                    print(f"✅ 已将列名从 GazePointX/Y_normalized 重命名为 x/y")
+
             # 数据预处理
             df = self.preprocess_data(df, debug)
             

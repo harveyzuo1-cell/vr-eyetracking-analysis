@@ -1,0 +1,16 @@
+subject_id,group,error,rr_1d,det_1d,lmax_1d,ent_1d,rr_2d,det_2d,lmax_2d,ent_2d
+n10q1,control,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+n10q2,control,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+n10q3,control,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+n10q4,control,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+n10q5,control,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+m10q1,mci,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+m10q2,mci,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+m10q3,mci,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+m10q4,mci,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+m10q5,mci,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+ad10q1,ad,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+ad10q2,ad,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+ad10q3,ad,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+ad10q4,ad,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0
+ad10q5,ad,'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d',0.0,0.0,0,0.0,0.0,0.0,0,0.0

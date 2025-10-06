@@ -1,6 +1,6 @@
 {
   "rqa_sig": "m2_tau1_eps0.06_lmin2",
-  "generated_at": "2025-08-06T16:25:12.110790",
+  "generated_at": "2025-10-01T14:27:32.194717",
   "feature_names": [
     "game_duration",
     "roi_kw_time",

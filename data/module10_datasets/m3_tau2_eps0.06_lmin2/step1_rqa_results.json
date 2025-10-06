@@ -1,0 +1,203 @@
+{
+  "control": [
+    {
+      "subject_id": "n10q1",
+      "group": "control",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "n10q2",
+      "group": "control",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "n10q3",
+      "group": "control",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "n10q4",
+      "group": "control",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "n10q5",
+      "group": "control",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    }
+  ],
+  "mci": [
+    {
+      "subject_id": "m10q1",
+      "group": "mci",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "m10q2",
+      "group": "mci",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "m10q3",
+      "group": "mci",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "m10q4",
+      "group": "mci",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "m10q5",
+      "group": "mci",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    }
+  ],
+  "ad": [
+    {
+      "subject_id": "ad10q1",
+      "group": "ad",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "ad10q2",
+      "group": "ad",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "ad10q3",
+      "group": "ad",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "ad10q4",
+      "group": "ad",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    },
+    {
+      "subject_id": "ad10q5",
+      "group": "ad",
+      "error": "'RQAAnalyzerGPU' object has no attribute 'compute_rqa_1d'",
+      "rr_1d": 0.0,
+      "det_1d": 0.0,
+      "lmax_1d": 0,
+      "ent_1d": 0.0,
+      "rr_2d": 0.0,
+      "det_2d": 0.0,
+      "lmax_2d": 0,
+      "ent_2d": 0.0
+    }
+  ]
+}

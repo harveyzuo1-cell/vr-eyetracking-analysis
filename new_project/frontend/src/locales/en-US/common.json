@@ -1,0 +1,25 @@
+{
+  "app": {
+    "title": "VR Eye Tracking Data Analysis Platform"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "module00": "Data Management",
+    "module01": "Data Upload"
+  },
+  "actions": {
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "search": "Search",
+    "export": "Export",
+    "import": "Import"
+  },
+  "status": {
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "noData": "No Data"
+  }
+}

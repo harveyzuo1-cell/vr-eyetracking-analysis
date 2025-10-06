@@ -1,21 +1,20 @@
 {
   "permissions": {
     "allow": [
+      "Bash(do python -c \"\nimport json\nwith open(''$file'', ''r'', encoding=''utf-8'') as f:\n    data = json.load(f)\nfor rt in [''keywords'', ''instructions'', ''background'']:\n    if rt in data.get(''regions'', {}):\n        for r in data[''regions''][rt]:\n            if ''color'' not in r:\n                r[''color''] = {''KW'':''#1890ff'',''INST'':''#52c41a'',''BG'':''#faad14''}[r.get(''type'','''')]\n            if ''description'' not in r:\n                r[''description''] = {''KW'':''关键区域'',''INST'':''指令区域'',''BG'':''背景区域''}[r.get(''type'','''')]\n            if ''name'' not in r:\n                r[''name''] = r[''id'']\nwith open(''$file'', ''w'', encoding=''utf-8'') as f:\n    json.dump(data, f, ensure_ascii=False, indent=2)\nprint(''Updated: $file'')\n\")",
+      "Bash(del \"c:\\Users\\asino\\Downloads\\az - 副本 (11)\\new_project\\src\\modules\\module02_preprocessing\\api.py\")",
+      "Bash(pytest:*)",
+      "Bash(npm start)",
+      "Bash(npm run dev:*)",
+      "Bash(set PYTHONPATH=%CD%)",
       "Bash(python:*)",
-      "Bash(wc:*)",
-      "Bash(ls:*)",
-      "Bash(gh:*)",
-      "Bash(where winget)",
-      "Bash(winget install:*)",
-      "Bash(where gh)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)",
+      "Read(//c/**)",
       "Bash(powershell:*)",
-      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" auth login)",
-      "Bash(setx:*)",
-      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" auth status)",
-      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" auth login --web)",
-      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" auth logout)",
-      "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

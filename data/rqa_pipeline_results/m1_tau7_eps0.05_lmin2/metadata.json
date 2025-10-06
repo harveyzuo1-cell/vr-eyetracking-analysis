@@ -1,0 +1,14 @@
+{
+  "signature": "m1_tau7_eps0.05_lmin2",
+  "parameters": {
+    "m": 1,
+    "tau": 7,
+    "eps": 0.05,
+    "lmin": 2
+  },
+  "last_updated": "2025-10-01T17:46:41.918599",
+  "step_1_completed": true,
+  "step_2_completed": true,
+  "step_3_completed": true,
+  "step_4_completed": true
+}

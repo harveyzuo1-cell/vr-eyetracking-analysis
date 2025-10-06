@@ -1,0 +1,18 @@
+{
+  "last_updated": "2025-10-06T14:26:46.845451",
+  "total_subjects": 0,
+  "groups": {
+    "control": {
+      "count": 0,
+      "subjects": []
+    },
+    "mci": {
+      "count": 0,
+      "subjects": []
+    },
+    "ad": {
+      "count": 0,
+      "subjects": []
+    }
+  }
+}

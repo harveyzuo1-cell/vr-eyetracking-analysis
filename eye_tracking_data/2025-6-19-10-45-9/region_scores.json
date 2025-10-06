@@ -1,0 +1,21 @@
+{
+    "game_scores": {
+        "game_1": 90.44,
+        "game_2": 90.82,
+        "game_3": 82.89,
+        "game_4": 69.98,
+        "game_5": 77.35
+    },
+    "total_score": 82.3,
+    "F1": 85.38,
+    "F1_description": "执行功能较强，计划制定有序",
+    "F2": 82.15,
+    "F2_description": "空间感知敏锐，注意力集中",
+    "F3": 86.66,
+    "F3_description": "记忆形成良好，情绪调节稳定",
+    "F4": 80.4,
+    "F4_description": "视觉处理迅速，识别准确",
+    "F5": 80.4,
+    "F5_description": "听觉敏锐，语言表达流畅",
+    "ai_diagnosis": "The overall cognitive performance score of 82.3 suggests generally good functioning, with strengths in memory, emotion, and association (F3) and motor coordination (F1). However, variability in game scores (69.98-90.82) indicates potential fluctuations in attention or task-specific challenges. Strengths in auditory and language processing (F5) are noted, while spatial and visual integration (F2, F4) show room for improvement. General advice: Engage in activities that enhance spatial awareness (e.g., puzzles, navigation tasks) and visual processing (e.g., pattern recognition exercises). Monitor consistency in task performance, as lower scores in some games may reflect fatigue or attention lapses. Maintain a balanced cognitive routine to support overall brain health. Consider further evaluation if specific functional concerns arise."
+}

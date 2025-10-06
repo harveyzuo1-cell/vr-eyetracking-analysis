@@ -1,0 +1,381 @@
+{
+  "version": "v1",
+  "layout": "legacy",
+  "coordinate_system": "plotly",
+  "description": "从老项目ROI配置转换 (版本v1)",
+  "created_date": "2025-10-02",
+  "tasks": {
+    "q1": {
+      "task_id": "q1",
+      "task_name": "时间定向",
+      "background_image": "Q1.jpg",
+      "regions": {
+        "keywords": [
+          {
+            "id": "KW_q1_1",
+            "name": "KW_n2q1_1",
+            "type": "keyword",
+            "x": 0.01,
+            "y": 0.4114,
+            "width": 0.38,
+            "height": 0.1722,
+            "color": "#FF6B6B",
+            "priority": 2
+          },
+          {
+            "id": "KW_q1_2",
+            "name": "KW_n2q1_2",
+            "type": "keyword",
+            "x": 0.39,
+            "y": 0.4114,
+            "width": 0.278,
+            "height": 0.1722,
+            "color": "#FF6B6B",
+            "priority": 2
+          },
+          {
+            "id": "KW_q1_3",
+            "name": "KW_n2q1_3",
+            "type": "keyword",
+            "x": 0.01,
+            "y": 0.6506,
+            "width": 0.48,
+            "height": 0.1778,
+            "color": "#FF6B6B",
+            "priority": 2
+          },
+          {
+            "id": "KW_q1_4",
+            "name": "KW_n2q1_4",
+            "type": "keyword",
+            "x": 0.49,
+            "y": 0.6506,
+            "width": 0.425,
+            "height": 0.1778,
+            "color": "#FF6B6B",
+            "priority": 2
+          }
+        ],
+        "instructions": [
+          {
+            "id": "INST_q1_1",
+            "name": "INST_n2q1_1",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.175,
+            "width": 0.345,
+            "height": 0.175,
+            "color": "#FFA500",
+            "priority": 1
+          }
+        ],
+        "background": [
+          {
+            "id": "BG_q1",
+            "name": "BG_n2q1",
+            "type": "background",
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 1,
+            "color": "#87CEEB",
+            "priority": 0
+          }
+        ]
+      }
+    },
+    "q2": {
+      "task_id": "q2",
+      "task_name": "空间定向",
+      "background_image": "Q2.jpg",
+      "regions": {
+        "keywords": [
+          {
+            "id": "KW_q2_1",
+            "name": "KW_n2q2_1",
+            "type": "keyword",
+            "x": 0.01,
+            "y": 0.4104,
+            "width": 0.456,
+            "height": 0.1792,
+            "color": "#FF6B6B",
+            "priority": 2
+          },
+          {
+            "id": "KW_q2_2",
+            "name": "KW_n2q2_2",
+            "type": "keyword",
+            "x": 0.466,
+            "y": 0.4114,
+            "width": 0.484,
+            "height": 0.1772,
+            "color": "#FF6B6B",
+            "priority": 2
+          },
+          {
+            "id": "KW_q2_3",
+            "name": "KW_n2q2_3",
+            "type": "keyword",
+            "x": 0.01,
+            "y": 0.6506,
+            "width": 0.48,
+            "height": 0.1778,
+            "color": "#FF6B6B",
+            "priority": 2
+          },
+          {
+            "id": "KW_q2_4",
+            "name": "KW_n2q2_4",
+            "type": "keyword",
+            "x": 0.49,
+            "y": 0.6506,
+            "width": 0.509,
+            "height": 0.1778,
+            "color": "#FF6B6B",
+            "priority": 2
+          }
+        ],
+        "instructions": [
+          {
+            "id": "INST_q2_1",
+            "name": "INST_n2q2_1",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.175,
+            "width": 0.744,
+            "height": 0.175,
+            "color": "#FFA500",
+            "priority": 1
+          }
+        ],
+        "background": [
+          {
+            "id": "BG_q2",
+            "name": "BG_n2q2",
+            "type": "background",
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 1,
+            "color": "#87CEEB",
+            "priority": 0
+          }
+        ]
+      }
+    },
+    "q3": {
+      "task_id": "q3",
+      "task_name": "即刻记忆",
+      "background_image": "Q3.jpg",
+      "regions": {
+        "keywords": [
+          {
+            "id": "KW_q3_1",
+            "name": "KW_n2q3_1",
+            "type": "keyword",
+            "x": 0.01,
+            "y": 0.4312,
+            "width": 0.17,
+            "height": 0.1536,
+            "color": "#FF6B6B",
+            "priority": 2
+          },
+          {
+            "id": "KW_q3_2",
+            "name": "KW_n2q3_2",
+            "type": "keyword",
+            "x": 0.18,
+            "y": 0.4312,
+            "width": 0.16,
+            "height": 0.1536,
+            "color": "#FF6B6B",
+            "priority": 2
+          },
+          {
+            "id": "KW_q3_3",
+            "name": "KW_n2q3_3",
+            "type": "keyword",
+            "x": 0.34,
+            "y": 0.4312,
+            "width": 0.17,
+            "height": 0.1536,
+            "color": "#FF6B6B",
+            "priority": 2
+          }
+        ],
+        "instructions": [
+          {
+            "id": "INST_q3_1",
+            "name": "INST_n2q3_1",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.1627,
+            "width": 0.778,
+            "height": 0.1616,
+            "color": "#FFA500",
+            "priority": 1
+          },
+          {
+            "id": "INST_q3_2",
+            "name": "INST_n2q3_2",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.695,
+            "width": 0.989,
+            "height": 0.16,
+            "color": "#FFA500",
+            "priority": 1
+          }
+        ],
+        "background": [
+          {
+            "id": "BG_q3",
+            "name": "BG_n2q3",
+            "type": "background",
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 1,
+            "color": "#87CEEB",
+            "priority": 0
+          }
+        ]
+      }
+    },
+    "q4": {
+      "task_id": "q4",
+      "task_name": "注意力与计算",
+      "background_image": "Q4.jpg",
+      "regions": {
+        "keywords": [
+          {
+            "id": "KW_q4_1",
+            "name": "KW_n2q4_1",
+            "type": "keyword",
+            "x": 0.42,
+            "y": 0.0727,
+            "width": 0.34,
+            "height": 0.3516,
+            "color": "#FF6B6B",
+            "priority": 2
+          }
+        ],
+        "instructions": [
+          {
+            "id": "INST_q4_1",
+            "name": "INST_n2q4_1",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.1627,
+            "width": 0.41,
+            "height": 0.1616,
+            "color": "#FFA500",
+            "priority": 1
+          },
+          {
+            "id": "INST_q4_2a",
+            "name": "INST_n2q4_2a",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.46,
+            "width": 0.989,
+            "height": 0.16,
+            "color": "#FFA500",
+            "priority": 1
+          },
+          {
+            "id": "INST_q4_2b",
+            "name": "INST_n2q4_2b",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.7475,
+            "width": 0.778,
+            "height": 0.168,
+            "color": "#FFA500",
+            "priority": 1
+          }
+        ],
+        "background": [
+          {
+            "id": "BG_q4",
+            "name": "BG_n2q4",
+            "type": "background",
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 1,
+            "color": "#87CEEB",
+            "priority": 0
+          }
+        ]
+      }
+    },
+    "q5": {
+      "task_id": "q5",
+      "task_name": "延迟回忆",
+      "background_image": "Q5.jpg",
+      "regions": {
+        "keywords": [],
+        "instructions": [
+          {
+            "id": "INST_q5_1a",
+            "name": "INST_n2q5_1a",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.175,
+            "width": 0.418,
+            "height": 0.175,
+            "color": "#FFA500",
+            "priority": 1
+          },
+          {
+            "id": "INST_q5_1b",
+            "name": "INST_n2q5_1b",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.4114,
+            "width": 0.513,
+            "height": 0.1722,
+            "color": "#FFA500",
+            "priority": 1
+          },
+          {
+            "id": "INST_q5_1c",
+            "name": "INST_n2q5_1c",
+            "type": "instruction",
+            "x": 0.01,
+            "y": 0.6506,
+            "width": 0.76,
+            "height": 0.1778,
+            "color": "#FFA500",
+            "priority": 1
+          }
+        ],
+        "background": [
+          {
+            "id": "BG_q5",
+            "name": "BG_n2q5",
+            "type": "background",
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 1,
+            "color": "#87CEEB",
+            "priority": 0
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "total_tasks": 5,
+    "total_subjects": 65,
+    "groups": {
+      "control": 22,
+      "mci": 22,
+      "ad": 21
+    },
+    "data_period": "2025-01",
+    "source": "old_roi_config.py"
+  }
+}

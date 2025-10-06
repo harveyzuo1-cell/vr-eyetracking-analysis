@@ -1,0 +1,73 @@
+{
+    "version": "v1",
+    "layout": "legacy",
+    "description": "旧版ROI布局(2025-01数据,65个受试者)",
+    "created_date": "2025-10-02",
+    "regions": [
+        {
+            "id": "q1_time_orientation",
+            "name": "Q1_时间定向区",
+            "task": "q1",
+            "x": 0.1,
+            "y": 0.2,
+            "width": 0.3,
+            "height": 0.2,
+            "color": "#FF6B6B",
+            "description": "时间定向任务关键区域"
+        },
+        {
+            "id": "q2_space_orientation",
+            "name": "Q2_空间定向区",
+            "task": "q2",
+            "x": 0.5,
+            "y": 0.2,
+            "width": 0.3,
+            "height": 0.2,
+            "color": "#4ECDC4",
+            "description": "空间定向任务关键区域"
+        },
+        {
+            "id": "q3_immediate_memory",
+            "name": "Q3_即刻记忆区",
+            "task": "q3",
+            "x": 0.1,
+            "y": 0.5,
+            "width": 0.3,
+            "height": 0.2,
+            "color": "#FFE66D",
+            "description": "即刻记忆任务关键区域"
+        },
+        {
+            "id": "q4_attention_calculation",
+            "name": "Q4_注意力与计算区",
+            "task": "q4",
+            "x": 0.5,
+            "y": 0.5,
+            "width": 0.3,
+            "height": 0.2,
+            "color": "#95E1D3",
+            "description": "注意力与计算任务关键区域"
+        },
+        {
+            "id": "q5_delayed_recall",
+            "name": "Q5_延迟回忆区",
+            "task": "q5",
+            "x": 0.3,
+            "y": 0.7,
+            "width": 0.3,
+            "height": 0.2,
+            "color": "#C7CEEA",
+            "description": "延迟回忆任务关键区域"
+        }
+    ],
+    "metadata": {
+        "total_subjects": 65,
+        "groups": {
+            "control": 22,
+            "mci": 22,
+            "ad": 21
+        },
+        "data_period": "2025-01",
+        "source": "data/*_raw/"
+    }
+}

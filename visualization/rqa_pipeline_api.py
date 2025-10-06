@@ -14,8 +14,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import base64
 import io
+import time
 from datetime import datetime
 from flask import Blueprint, request, jsonify
+from typing import Dict, List
 import traceback
 
 # 创建蓝图
@@ -28,9 +30,16 @@ plt.rcParams['axes.unicode_minus'] = False
 # 基础数据目录
 BASE_DATA_DIR = 'data'
 PIPELINE_RESULTS_DIR = os.path.join(BASE_DATA_DIR, 'rqa_pipeline_results')
+MODULE10_DATASET_ROOT = os.path.join(BASE_DATA_DIR, 'module10_datasets')
+
+# 眼动数据路径 (校准后的数据)
+CONTROL_DATA_DIR = os.path.join(BASE_DATA_DIR, 'control_calibrated')
+MCI_DATA_DIR = os.path.join(BASE_DATA_DIR, 'mci_calibrated')
+AD_DATA_DIR = os.path.join(BASE_DATA_DIR, 'ad_calibrated')
 
 # 确保目录存在
 os.makedirs(PIPELINE_RESULTS_DIR, exist_ok=True)
+os.makedirs(MODULE10_DATASET_ROOT, exist_ok=True)
 
 
 ###############################################################################
@@ -160,15 +169,21 @@ def get_param_history():
 
 def load_xy_time_series(csv_path):
     """
-    读取 CSV（需包含 'x','y' 列；可带 'milliseconds','ROI','SequenceID' 等），
+    读取 CSV（需包含 'x','y' 或 'GazePointX_normalized','GazePointY_normalized' 列），
     返回: x_, y_, t_, df
     """
     df = pd.read_csv(csv_path)
-    if 'x' not in df.columns or 'y' not in df.columns:
-        raise ValueError(f"{csv_path} 缺少 x 或 y 列!")
-    
-    x_ = df['x'].to_numpy()
-    y_ = df['y'].to_numpy()
+
+    # 支持两种列名格式
+    if 'x' in df.columns and 'y' in df.columns:
+        x_ = df['x'].to_numpy()
+        y_ = df['y'].to_numpy()
+    elif 'GazePointX_normalized' in df.columns and 'GazePointY_normalized' in df.columns:
+        x_ = df['GazePointX_normalized'].to_numpy()
+        y_ = df['GazePointY_normalized'].to_numpy()
+    else:
+        raise ValueError(f"{csv_path} 缺少 x/y 或 GazePointX_normalized/GazePointY_normalized 列!")
+
     if 'milliseconds' in df.columns:
         t_ = df['milliseconds'].to_numpy()
     else:
@@ -1358,4 +1373,646 @@ def delete_param_results(signature):
         return jsonify({
             'status': 'error',
             'message': f'删除结果失败: {str(e)}'
-        }), 500 
+        }), 500
+
+
+###############################################################################
+# 批量执行功能
+###############################################################################
+
+def generate_param_grid(m_range, tau_range, eps_range, lmin_range):
+    """
+    生成参数网格
+
+    Args:
+        m_range: {'start': int, 'end': int, 'step': int}
+        tau_range: {'start': int, 'end': int, 'step': int}
+        eps_range: {'start': float, 'end': float, 'step': float}
+        lmin_range: {'start': int, 'end': int, 'step': int}
+
+    Returns:
+        list: 参数组合列表，每个元素为 {'m': int, 'tau': int, 'eps': float, 'lmin': int}
+    """
+    combinations = []
+
+    # 生成m值列表
+    m_values = list(range(m_range['start'], m_range['end'] + 1, m_range['step']))
+
+    # 生成tau值列表
+    tau_values = list(range(tau_range['start'], tau_range['end'] + 1, tau_range['step']))
+
+    # 生成eps值列表（处理浮点数精度）
+    eps_values = []
+    current_eps = eps_range['start']
+    while current_eps <= eps_range['end'] + 1e-9:  # 添加小容差避免浮点精度问题
+        eps_values.append(round(current_eps, 3))
+        current_eps += eps_range['step']
+
+    # 生成lmin值列表
+    lmin_values = list(range(lmin_range['start'], lmin_range['end'] + 1, lmin_range['step']))
+
+    # 生成所有组合
+    for m in m_values:
+        for tau in tau_values:
+            for eps in eps_values:
+                for lmin in lmin_values:
+                    combinations.append({
+                        'm': m,
+                        'tau': tau,
+                        'eps': eps,
+                        'lmin': lmin
+                    })
+
+    return combinations
+
+
+def execute_full_pipeline_internal(params):
+    """
+    执行完整的5步RQA流程（内部函数，用于批处理）
+
+    Args:
+        params: {'m': int, 'tau': int, 'eps': float, 'lmin': int}
+
+    Returns:
+        dict: {'success': bool, 'param_signature': str, 'error': str (可选)}
+    """
+    param_signature = generate_param_signature(params)
+
+    try:
+        print(f"\n{'='*60}")
+        print(f"开始执行参数组合: {param_signature}")
+        print(f"参数详情: m={params['m']}, τ={params['tau']}, ε={params['eps']}, l_min={params['lmin']}")
+        print(f"{'='*60}\n")
+
+        # 检查是否已完成（断点续传）
+        param_dir = get_param_directory(params)
+        metadata_file = os.path.join(param_dir, 'metadata.json')
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+            # 检查是否所有5步都已完成
+            if all(metadata.get(f'step_{i}_completed', False) for i in range(1, 6)):
+                print(f"✓ 参数组合 {param_signature} 已完成，跳过")
+                return {
+                    'success': True,
+                    'param_signature': param_signature,
+                    'skipped': True,
+                    'message': '已存在完整结果，已跳过'
+                }
+
+        # Step 1: RQA计算
+        print("Step 1/5: RQA计算...")
+        step1_dir = get_step_directory(params, 'step1_rqa_calculation')
+        data_dirs = [
+            'data/control_calibrated',
+            'data/mci_calibrated',
+            'data/ad_calibrated'
+        ]
+
+        results = []
+        for data_dir in data_dirs:
+            if os.path.exists(data_dir):
+                for root, dirs, files in os.walk(data_dir):
+                    for file in files:
+                        if file.endswith('_calibrated.csv'):
+                            csv_path = os.path.join(root, file)
+                            result = process_single_rqa_file(csv_path, params['m'], params['tau'], params['eps'], params['lmin'])
+                            if result:
+                                results.append(result)
+
+        # 保存RQA结果
+        control_results = [r for r in results if r['filename'].startswith('n')]
+        mci_results = [r for r in results if r['filename'].startswith('m')]
+        ad_results = [r for r in results if r['filename'].startswith('ad')]
+
+        if control_results:
+            control_df = pd.DataFrame(control_results)
+            control_path = os.path.join(step1_dir, 'RQA_1D2D_summary_control.csv')
+            control_df.to_csv(control_path, index=False)
+
+        if mci_results:
+            mci_df = pd.DataFrame(mci_results)
+            mci_path = os.path.join(step1_dir, 'RQA_1D2D_summary_mci.csv')
+            mci_df.to_csv(mci_path, index=False)
+
+        if ad_results:
+            ad_df = pd.DataFrame(ad_results)
+            ad_path = os.path.join(step1_dir, 'RQA_1D2D_summary_ad.csv')
+            ad_df.to_csv(ad_path, index=False)
+
+        save_param_metadata(params, 1)
+        print(f"✓ Step 1 完成：处理了 {len(results)} 个文件")
+
+        # Step 2: 数据合并
+        print("Step 2/5: 数据合并...")
+        step2_dir = get_step_directory(params, 'step2_data_merging')
+        control_path = os.path.join(step1_dir, 'RQA_1D2D_summary_control.csv')
+        mci_path = os.path.join(step1_dir, 'RQA_1D2D_summary_mci.csv')
+        ad_path = os.path.join(step1_dir, 'RQA_1D2D_summary_ad.csv')
+
+        merged_data = merge_group_data(control_path, mci_path, ad_path)
+        output_path = os.path.join(step2_dir, 'All_Subjects_RQA_EyeMetrics.csv')
+        merged_data.to_csv(output_path, index=False)
+        save_param_metadata(params, 2)
+        print(f"✓ Step 2 完成：合并了 {len(merged_data)} 条记录")
+
+        # Step 3: 特征补充
+        print("Step 3/5: 特征补充...")
+        step3_dir = get_step_directory(params, 'step3_feature_enrichment')
+        rqa_path = os.path.join(step2_dir, 'All_Subjects_RQA_EyeMetrics.csv')
+
+        df_rqa = pd.read_csv(rqa_path, dtype={"ID": str})
+        df_rqa.rename(columns={"ID": "ADQ_ID"}, inplace=True)
+        df_rqa["ADQ_ID"] = df_rqa["ADQ_ID"].str.replace(r"\.0$", "", regex=True)
+
+        # 构建事件聚合
+        events_path = 'data/event_analysis_results/All_Events.csv'
+        df_evt_agg = build_event_aggregates(events_path)
+
+        # 构建ROI聚合
+        roi_path = 'data/event_analysis_results/All_ROI_Summary.csv'
+        df_roi_agg = build_roi_aggregates(roi_path)
+
+        # 合并特征
+        if not df_evt_agg.empty and not df_roi_agg.empty:
+            df_agg = pd.merge(df_evt_agg, df_roi_agg, on="ADQ_ID", how="outer")
+        elif not df_evt_agg.empty:
+            df_agg = df_evt_agg
+        elif not df_roi_agg.empty:
+            df_agg = df_roi_agg
+        else:
+            df_agg = pd.DataFrame()
+
+        if not df_agg.empty:
+            df_final = pd.merge(df_rqa, df_agg, on="ADQ_ID", how="left")
+        else:
+            df_final = df_rqa
+
+        df_final.rename(columns={"ADQ_ID": "ID"}, inplace=True)
+        output_path = os.path.join(step3_dir, 'All_Subjects_RQA_EyeMetrics_Filled.csv')
+        df_final.to_csv(output_path, index=False)
+        save_param_metadata(params, 3)
+        print(f"✓ Step 3 完成：生成了 {len(df_final)} 条记录")
+
+        # Step 4: 统计分析
+        print("Step 4/5: 统计分析...")
+        step4_dir = get_step_directory(params, 'step4_statistical_analysis')
+        filled_path = os.path.join(step3_dir, 'All_Subjects_RQA_EyeMetrics_Filled.csv')
+        df = pd.read_csv(filled_path)
+
+        rqa_vars = ["RR-2D-xy", "DET-2D-xy", "ENT-2D-xy"]
+        group_stats = df.groupby("Group")[rqa_vars].describe()
+        group_stats_path = os.path.join(step4_dir, 'group_stats_output.csv')
+        group_stats.to_csv(group_stats_path)
+
+        multi_level_stats = df.groupby(["Group", "folder", "q"])[rqa_vars].agg(["mean", "std"])
+        multi_level_path = os.path.join(step4_dir, 'multi_level_stats_output.csv')
+        multi_level_stats.to_csv(multi_level_path)
+        save_param_metadata(params, 4)
+        print(f"✓ Step 4 完成：生成统计分析")
+
+        # Step 5: 可视化
+        print("Step 5/5: 可视化...")
+        step5_dir = get_step_directory(params, 'step5_visualization')
+
+        # 生成条形图
+        bar_charts = create_group_bar_charts(df, ["RR-2D-xy", "DET-2D-xy", "ENT-2D-xy"])
+        for chart in bar_charts:
+            chart_filename = f"bar_chart_{chart['metric'].replace('-', '_')}.png"
+            chart_path = os.path.join(step5_dir, chart_filename)
+            image_data = base64.b64decode(chart['image'])
+            with open(chart_path, 'wb') as f:
+                f.write(image_data)
+
+        # 生成折线图
+        trend_chart = create_task_trend_chart(df, "RR-2D-xy")
+        if trend_chart:
+            trend_filename = f"trend_chart_{trend_chart['metric'].replace('-', '_')}.png"
+            trend_path = os.path.join(step5_dir, trend_filename)
+            image_data = base64.b64decode(trend_chart['image'])
+            with open(trend_path, 'wb') as f:
+                f.write(image_data)
+
+        save_param_metadata(params, 5)
+        print(f"✓ Step 5 完成：生成了 {len(bar_charts) + (1 if trend_chart else 0)} 个图表")
+
+        print(f"\n{'='*60}")
+        print(f"✅ 参数组合 {param_signature} 执行成功！")
+        print(f"{'='*60}\n")
+
+        return {
+            'success': True,
+            'param_signature': param_signature,
+            'message': '完整流程执行成功'
+        }
+
+    except Exception as e:
+        error_msg = f"执行失败: {str(e)}"
+        print(f"\n{'='*60}")
+        print(f"❌ 参数组合 {param_signature} 执行失败")
+        print(f"错误信息: {error_msg}")
+        print(f"{'='*60}\n")
+        traceback.print_exc()
+
+        return {
+            'success': False,
+            'param_signature': param_signature,
+            'error': error_msg
+        }
+
+
+@rqa_pipeline_bp.route('/api/rqa-pipeline/batch-execute', methods=['POST'])
+def batch_execute():
+    """批量执行RQA流程"""
+    try:
+        data = request.get_json()
+
+        print("\n" + "="*80)
+        print("🚀 启动批量执行RQA流程")
+        print("="*80)
+
+        # 解析参数范围
+        m_range = data.get('m_range', {'start': 1, 'end': 10, 'step': 1})
+        tau_range = data.get('tau_range', {'start': 1, 'end': 10, 'step': 1})
+        eps_range = data.get('eps_range', {'start': 0.05, 'end': 0.1, 'step': 0.01})
+        lmin_range = data.get('lmin_range', {'start': 2, 'end': 3, 'step': 1})
+
+        print(f"\n📋 参数范围配置:")
+        print(f"  - 嵌入维度 (m): {m_range['start']} → {m_range['end']}, 步长 {m_range['step']}")
+        print(f"  - 时间延迟 (τ): {tau_range['start']} → {tau_range['end']}, 步长 {tau_range['step']}")
+        print(f"  - 递归阈值 (ε): {eps_range['start']} → {eps_range['end']}, 步长 {eps_range['step']}")
+        print(f"  - 最小线长 (l_min): {lmin_range['start']} → {lmin_range['end']}, 步长 {lmin_range['step']}")
+
+        # 生成参数组合
+        param_combinations = generate_param_grid(m_range, tau_range, eps_range, lmin_range)
+        total_count = len(param_combinations)
+
+        print(f"\n📊 生成了 {total_count} 个参数组合")
+        print(f"{'='*80}\n")
+
+        # 批量执行
+        results = []
+        completed_count = 0
+        failed_count = 0
+        skipped_count = 0
+
+        for i, params in enumerate(param_combinations):
+            param_sig = generate_param_signature(params)
+            print(f"\n" + "="*80)
+            print(f"[{i+1}/{total_count}] 处理参数组合: {param_sig}")
+            print(f"进度: {((i+1)/total_count*100):.1f}%")
+            print("="*80)
+
+            result = execute_full_pipeline_internal(params)
+            results.append(result)
+
+            if result['success']:
+                if result.get('skipped', False):
+                    skipped_count += 1
+                    print(f"⏭️  {param_sig} - 已跳过（已存在完整结果）")
+                else:
+                    completed_count += 1
+                    print(f"✅ {param_sig} - 执行成功")
+            else:
+                failed_count += 1
+                print(f"❌ {param_sig} - 执行失败: {result.get('error', '未知错误')}")
+
+            # 每个组合都输出进度摘要
+            print(f"\n📊 当前统计: 成功={completed_count}, 跳过={skipped_count}, 失败={failed_count}, 总计={i+1}/{total_count}\n")
+
+        # 最终摘要
+        print(f"\n{'='*80}")
+        print(f"🎉 批量执行完成！")
+        print(f"{'='*80}")
+        print(f"📊 执行摘要:")
+        print(f"   总计: {total_count} 个参数组合")
+        print(f"   ✅ 成功执行: {completed_count}")
+        print(f"   ⏭️  已跳过: {skipped_count}")
+        print(f"   ❌ 执行失败: {failed_count}")
+        print(f"{'='*80}\n")
+
+        return jsonify({
+            'status': 'success',
+            'message': f'批量执行完成',
+            'data': {
+                'total': total_count,
+                'completed': completed_count,
+                'skipped': skipped_count,
+                'failed': failed_count,
+                'results': results
+            }
+        })
+
+    except Exception as e:
+        print(f"\n{'='*80}")
+        print(f"❌ 批量执行错误: {e}")
+        print(f"{'='*80}\n")
+        traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': f'批量执行失败: {str(e)}'
+        }), 500
+
+
+# ============================================================================
+# GPU加速版本的Pipeline函数
+# ============================================================================
+
+def execute_full_pipeline_internal_gpu(params):
+    """
+    GPU加速的完整RQA pipeline
+
+    Args:
+        params: {'m': int, 'tau': int, 'eps': float, 'lmin': int}
+
+    Returns:
+        {'success': bool, 'param_signature': str, 'skipped': bool, ...}
+    """
+    from analysis.rqa_analyzer_gpu import compute_rqa_1d_gpu, compute_rqa_2d_gpu
+    import pandas as pd
+
+    param_signature = generate_param_signature(params)
+
+    # 断点续传检查
+    param_dir = os.path.join(MODULE10_DATASET_ROOT, param_signature)
+    metadata_file = os.path.join(param_dir, 'metadata.json')
+
+    if os.path.exists(metadata_file):
+        with open(metadata_file, 'r', encoding='utf-8') as f:
+            metadata = json.load(f)
+        if all(metadata.get(f'step_{i}_completed', False) for i in range(1, 6)):
+            return {
+                'success': True,
+                'param_signature': param_signature,
+                'skipped': True,
+                'message': 'Already completed'
+            }
+
+    try:
+        # 创建输出目录
+        os.makedirs(param_dir, exist_ok=True)
+
+        # Step 1: RQA计算 (GPU批处理加速) ⚡
+        from analysis.rqa_analyzer_gpu import RQAAnalyzerGPU
+
+        analyzer = RQAAnalyzerGPU(gpu_id=0)
+        rqa_results = {}
+
+        for group in ['control', 'mci', 'ad']:
+            # 加载组数据
+            group_data = load_group_data_for_rqa(group)
+
+            # 限制测试数据量: 只处理前5个subject (用于快速测试)
+            # 生产环境应移除此限制
+            subject_ids = list(group_data.keys())[:5]
+            print(f"  处理 {group} 组: {len(subject_ids)} 个subjects (共{len(group_data)}个)")
+
+            # 准备批量数据
+            trajectories_batch = []
+            subject_id_list = []
+
+            for subject_id in subject_ids:
+                subject_data = group_data[subject_id]
+                traj_x = subject_data['x']
+                traj_y = subject_data['y']
+                trajectories_batch.append((traj_x, traj_y))
+                subject_id_list.append(subject_id)
+
+            # GPU批处理
+            try:
+                batch_results = analyzer.analyze_batch_gpu(
+                    trajectories_batch,
+                    params,
+                    batch_size=10
+                )
+
+                # 组装结果
+                group_results = []
+                for subject_id, result in zip(subject_id_list, batch_results):
+                    combined_result = {
+                        'subject_id': subject_id,
+                        'group': group,
+                        **result
+                    }
+                    group_results.append(combined_result)
+
+                rqa_results[group] = group_results
+
+            except Exception as e:
+                print(f"Warning: {group} group batch processing failed: {e}")
+                rqa_results[group] = []
+                continue
+
+        # 保存Step 1结果
+        step1_file = os.path.join(param_dir, 'step1_rqa_results.json')
+        with open(step1_file, 'w', encoding='utf-8') as f:
+            json.dump(rqa_results, f, indent=2, ensure_ascii=False)
+
+        update_metadata(param_dir, 'step_1_completed', True)
+
+        # Step 2: 数据合并
+        merge_rqa_data(rqa_results, param_dir)
+        update_metadata(param_dir, 'step_2_completed', True)
+
+        # Step 3: 特征提取
+        enrich_features_from_rqa(param_dir)
+        update_metadata(param_dir, 'step_3_completed', True)
+
+        # Step 4: 统计分析
+        run_statistical_analysis(param_dir)
+        update_metadata(param_dir, 'step_4_completed', True)
+
+        # Step 5: 可视化
+        generate_rqa_visualizations(param_dir, params)
+        update_metadata(param_dir, 'step_5_completed', True)
+
+        return {
+            'success': True,
+            'param_signature': param_signature,
+            'skipped': False
+        }
+
+    except Exception as e:
+        return {
+            'success': False,
+            'param_signature': param_signature,
+            'error': str(e)
+        }
+
+
+def load_group_data_for_rqa(group: str) -> Dict[str, Dict]:
+    """
+    加载指定组的所有受试者数据
+
+    Args:
+        group: 'control', 'mci', or 'ad'
+
+    Returns:
+        {subject_id: {'x': [...], 'y': [...], 'q': int}, ...}
+    """
+    # 使用校准后的数据目录
+    group_dirs = {
+        'control': CONTROL_DATA_DIR,
+        'mci': MCI_DATA_DIR,
+        'ad': AD_DATA_DIR
+    }
+
+    group_data = {}
+    data_dir = group_dirs.get(group)
+
+    if not os.path.exists(data_dir):
+        return group_data
+
+    for filename in os.listdir(data_dir):
+        if filename.endswith('_preprocessed_calibrated.csv'):
+            filepath = os.path.join(data_dir, filename)
+
+            try:
+                df = pd.read_csv(filepath)
+
+                # 提取subject_id和问题编号
+                subject_id = filename.replace('_preprocessed_calibrated.csv', '')
+
+                group_data[subject_id] = {
+                    'x': df['GazePointX_normalized'].values,
+                    'y': df['GazePointY_normalized'].values,
+                    'q': extract_question_number(subject_id)
+                }
+
+            except Exception as e:
+                print(f"Warning: Failed to load {filename}: {e}")
+                continue
+
+    return group_data
+
+
+def extract_question_number(subject_id: str) -> int:
+    """从subject_id中提取问题编号 (如 'n1q3' -> 3)"""
+    import re
+    match = re.search(r'q(\d+)', subject_id)
+    return int(match.group(1)) if match else 0
+
+
+def merge_rqa_data(rqa_results: Dict, output_dir: str):
+    """合并RQA结果到CSV"""
+    all_data = []
+
+    for group in ['control', 'mci', 'ad']:
+        for result in rqa_results.get(group, []):
+            all_data.append(result)
+
+    df = pd.DataFrame(all_data)
+    output_file = os.path.join(output_dir, 'merged_rqa_data.csv')
+    df.to_csv(output_file, index=False, encoding='utf-8')
+
+
+def enrich_features_from_rqa(output_dir: str):
+    """特征提取 (占位符，可扩展)"""
+    pass
+
+
+def run_statistical_analysis(output_dir: str):
+    """统计分析 (占位符，可扩展)"""
+    pass
+
+
+def generate_rqa_visualizations(output_dir: str, params: Dict):
+    """生成可视化 (占位符，可扩展)"""
+    pass
+
+
+def update_metadata(param_dir: str, key: str, value):
+    """
+    更新参数目录的metadata.json文件
+
+    Args:
+        param_dir: 参数目录路径
+        key: 要更新的键
+        value: 要设置的值
+    """
+    metadata_file = os.path.join(param_dir, 'metadata.json')
+
+    # 读取现有metadata或创建新的
+    if os.path.exists(metadata_file):
+        with open(metadata_file, 'r', encoding='utf-8') as f:
+            metadata = json.load(f)
+    else:
+        metadata = {}
+
+    # 更新键值
+    metadata[key] = value
+    metadata['updated_at'] = datetime.now().isoformat()
+
+    # 保存
+    with open(metadata_file, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+
+# GPU并行批处理API
+@rqa_pipeline_bp.route('/api/rqa-pipeline/batch-execute-gpu', methods=['POST'])
+def batch_execute_gpu():
+    """GPU并行批处理API"""
+    from visualization.parallel_executor import GPUParallelExecutor, calculate_optimal_workers
+
+    data = request.json
+    batch_config = data.get('batch_config', {})
+    n_workers = data.get('n_workers', calculate_optimal_workers())
+
+    # 生成参数组合
+    param_combinations = generate_param_grid(
+        batch_config['m_range'],
+        batch_config['tau_range'],
+        batch_config['eps_range'],
+        batch_config['lmin_range']
+    )
+
+    total_count = len(param_combinations)
+
+    print(f"\n{'='*80}")
+    print(f"GPU Batch Execution Started (Serial Mode)")
+    print(f"Total combinations: {total_count}")
+    print(f"Note: Using serial execution in Flask (multiprocessing disabled)")
+    print(f"{'='*80}\n")
+
+    # 串行执行 (Flask环境中多进程不可用)
+    start_time = time.time()
+    results = []
+
+    for idx, params in enumerate(param_combinations):
+        print(f"Processing {idx+1}/{total_count}: {params}")
+        result = execute_full_pipeline_internal_gpu(params)
+        results.append((idx, params, result))
+
+        # 打印进度
+        if (idx + 1) % 10 == 0 or (idx + 1) == total_count:
+            elapsed = time.time() - start_time
+            progress = (idx + 1) / total_count * 100
+            print(f"Progress: {idx+1}/{total_count} ({progress:.1f}%) - Elapsed: {elapsed:.1f}s")
+
+    elapsed_time = time.time() - start_time
+
+    # 统计结果
+    success_count = sum(1 for _, _, r in results if r.get('success') and not r.get('skipped'))
+    skipped_count = sum(1 for _, _, r in results if r.get('skipped'))
+    failed_count = sum(1 for _, _, r in results if not r.get('success'))
+
+    stats = {
+        'total': total_count,
+        'success': success_count,
+        'skipped': skipped_count,
+        'failed': failed_count,
+        'elapsed_time': elapsed_time,
+        'avg_time_per_task': elapsed_time / total_count if total_count > 0 else 0
+    }
+
+    print(f"\n{'='*80}")
+    print(f"GPU Parallel Batch Execution Completed")
+    print(f"Time: {elapsed_time:.1f}s ({elapsed_time/3600:.2f}h)")
+    print(f"Success: {success_count}, Skipped: {skipped_count}, Failed: {failed_count}")
+    print(f"{'='*80}\n")
+
+    return jsonify({
+        'success': True,
+        'stats': stats,
+        'results': [{'index': i, 'params': p, 'result': r} for i, p, r in results[:100]]  # 返回前100个
+    })
