@@ -75,7 +75,19 @@ def restore_tasks_from_raw_data():
             metadata[subject_id]["task_count"] = len(tasks)
             updated_count += 1
 
-    print(f"已更新 {updated_count} 个受试者的 tasks_available")
+    print(f"已更新 {updated_count} 个V1受试者的 tasks_available")
+
+    # 为V2数据添加tasks_available (所有V2数据都有5个level任务)
+    print("\n=== 处理V2数据 ===")
+    v2_updated = 0
+    for subject_id, meta in metadata.items():
+        if meta.get('data_version') == 'v2':
+            # V2数据默认有5个level任务
+            metadata[subject_id]['tasks_available'] = ['level_1', 'level_2', 'level_3', 'level_4', 'level_5']
+            metadata[subject_id]['task_count'] = 5
+            v2_updated += 1
+
+    print(f"已更新 {v2_updated} 个V2受试者的 tasks_available")
 
     # 保存更新后的 metadata
     with open(metadata_file, 'w', encoding='utf-8') as f:
