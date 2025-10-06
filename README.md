@@ -2,6 +2,43 @@
 
 [English](#english) | [中文](#chinese)
 
+---
+
+## ⚠️ CRITICAL DATA SAFETY WARNING / 数据安全警告
+
+### 🔴 BEFORE ANY OPERATIONS / 操作前必读
+
+**ALWAYS backup critical data files before:**
+- Running any metadata rebuild scripts
+- Modifying `subject_metadata.json`
+- Updating subject information
+- Performing batch operations
+
+**关键数据文件，操作前务必备份：**
+- 运行任何元数据重建脚本前
+- 修改 `subject_metadata.json` 前
+- 更新受试者信息前
+- 执行批量操作前
+
+### 📂 Critical Data Locations / 关键数据位置
+
+```
+MUST BACKUP / 必须备份:
+├── new_project/data/01_raw/clinical/subject_metadata.json (元数据索引)
+├── new_project/data/02_processed/ (校正后的数据)
+├── new_project/data/subject_info/ (受试者信息)
+├── data/*_raw/ (V1原始数据)
+└── eye_tracking_data/ (V2原始数据)
+```
+
+### 🛡️ Data Recovery Tools / 数据恢复工具
+
+If `tasks_available` is lost: `python restore_tasks_available.py`
+
+See [DATA_RECOVERY.md](DATA_RECOVERY.md) for details.
+
+---
+
 <a name="english"></a>
 ## 📋 Project Overview
 
