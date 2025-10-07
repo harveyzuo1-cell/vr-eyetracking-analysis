@@ -59,10 +59,10 @@ class ROIConfigService:
     def list_background_images(self, version: str = 'v2') -> Dict:
         """
         获取背景图片列表
-        
+
         Args:
             version: 数据版本 (v1/v2)
-            
+
         Returns:
             {
                 'success': bool,
@@ -78,22 +78,35 @@ class ROIConfigService:
                 ],
                 'message': str
             }
+
+        Note:
+            V2数据任务命名映射关系:
+            - ROI配置文件使用: task1_roi.json, task2_roi.json, ..., task5_roi.json
+            - 背景图片文件同时存在: task1.png 和 level_1.png (指向同一任务)
+            - 前端显示时只展示 task1-task5，隐藏 level_1-level_5 避免重复
+            - 内部加载时: level_1 -> task1_roi.json (见load_roi_config方法)
         """
         try:
             image_dir = self.background_images_dir / version
             if not image_dir.exists():
                 return {'success': False, 'message': f'目录不存在: {version}'}
-            
+
             images = []
             for img_file in sorted(image_dir.glob('*.png')) + sorted(image_dir.glob('*.jpg')):
                 try:
+                    # 解析task_id（文件名去掉扩展名）
+                    task_id = img_file.stem
+
+                    # V2数据过滤重复: 跳过level_开头的文件，因为它们与taskX指向同一ROI配置
+                    # 例如: level_1.png 和 task1.png 都映射到 task1_roi.json
+                    if version == 'v2' and task_id.startswith('level_'):
+                        logger.debug(f"跳过V2重复文件: {img_file.name} (已由对应的taskX文件代表)")
+                        continue
+
                     # 获取图片信息
                     stat = img_file.stat()
                     with Image.open(img_file) as img:
                         width, height = img.size
-
-                    # 解析task_id（假设文件名格式为 task1.png, task2.png, ...）
-                    task_id = img_file.stem  # 去掉扩展名
 
                     # 统一尺寸配置：v1和v2都使用2400x2400
                     # 确保前端Canvas尺寸一致，避免ROI坐标问题
@@ -111,7 +124,7 @@ class ROIConfigService:
                 except Exception as e:
                     logger.error(f"Error processing image {img_file}: {e}")
                     continue
-            
+
             return {
                 'success': True,
                 'data': images,
@@ -231,7 +244,7 @@ class ROIConfigService:
 
         Args:
             version: 数据版本
-            task_id: 任务ID (支持q1-q5或task1-task5)
+            task_id: 任务ID (支持q1-q5或task1-task5或level_1-level_5)
 
         Returns:
             {
@@ -239,34 +252,53 @@ class ROIConfigService:
                 'data': {...},  # ROI配置JSON
                 'message': str
             }
+
+        Note:
+            V2数据任务命名映射关系 (内部统一使用taskX_roi.json):
+            - 前端请求 level_1 -> 映射到 task1_roi.json
+            - 前端请求 task1 -> 直接使用 task1_roi.json
+            - 前端请求 q1 -> 映射到 task1_roi.json (兼容V1格式)
+            这样确保无论使用哪种命名都能正确加载同一份ROI配置
         """
         try:
-            # 尝试多个可能的文件名（支持q1和task1两种命名）
-            # v2优先使用task命名，v1使用q命名
+            # 尝试多个可能的文件名（支持q1、task1、level_1三种命名）
+            # V2优先使用task命名，V1使用q命名
             possible_filenames = []
 
             # 如果是q开头，v2应优先尝试task开头的文件
             if task_id.startswith('q'):
                 task_num = task_id[1:]  # 提取数字部分
                 if version == 'v2':
-                    # v2优先使用task命名
+                    # V2优先使用task命名
                     possible_filenames.append(f"task{task_num}_roi.json")
                     possible_filenames.append(f"{task_id}_roi.json")
                 else:
-                    # v1优先使用q命名
+                    # V1优先使用q命名
                     possible_filenames.append(f"{task_id}_roi.json")
                     possible_filenames.append(f"task{task_num}_roi.json")
             # 如果是task开头，v1应优先尝试q开头的文件
             elif task_id.startswith('task'):
                 task_num = task_id[4:]  # 提取数字部分
                 if version == 'v1':
-                    # v1优先使用q命名
+                    # V1优先使用q命名
                     possible_filenames.append(f"q{task_num}_roi.json")
                     possible_filenames.append(f"{task_id}_roi.json")
                 else:
-                    # v2优先使用task命名
+                    # V2优先使用task命名
                     possible_filenames.append(f"{task_id}_roi.json")
                     possible_filenames.append(f"q{task_num}_roi.json")
+            # 如果是level_开头（V2 CSV文件命名格式），映射到task命名
+            # 重要: level_X 和 taskX 都指向同一个ROI配置文件 (taskX_roi.json)
+            elif task_id.startswith('level_'):
+                task_num = task_id.split('_')[1]  # 提取数字部分 level_1 -> 1
+                if version == 'v2':
+                    # V2优先使用task命名 (level_1 -> task1_roi.json)
+                    possible_filenames.append(f"task{task_num}_roi.json")
+                    possible_filenames.append(f"{task_id}_roi.json")
+                else:
+                    # 不太可能，但以防万一
+                    possible_filenames.append(f"{task_id}_roi.json")
+                    possible_filenames.append(f"task{task_num}_roi.json")
             else:
                 # 其他情况直接使用task_id
                 possible_filenames.append(f"{task_id}_roi.json")
@@ -304,37 +336,65 @@ class ROIConfigService:
     def save_roi_config(self, version: str, task_id: str, config: Dict) -> Dict:
         """
         保存ROI配置
-        
+
         Args:
             version: 数据版本
-            task_id: 任务ID
+            task_id: 任务ID (支持q1-q5或task1-task5或level_1-level_5)
             config: ROI配置字典
-            
+
         Returns:
             {
                 'success': bool,
                 'data': {...},
                 'message': str
             }
+
+        Note:
+            V2数据保存映射关系 (统一保存为taskX_roi.json):
+            - 前端传入 level_1 -> 保存为 task1_roi.json
+            - 前端传入 task1 -> 保存为 task1_roi.json
+            - 前端传入 q1 -> 保存为 task1_roi.json (V2) 或 q1_roi.json (V1)
+            这样确保无论使用哪种命名，V2数据都统一保存到taskX_roi.json
         """
         try:
-            # 验证配置
+            # 规范化task_id: V2数据统一转换为taskX格式，V1保持原样
+            normalized_task_id = task_id
+            if version == 'v2':
+                # 提取任务编号
+                task_num = None
+                if task_id.startswith('level_'):
+                    # level_1 -> 1
+                    task_num = task_id.split('_')[1]
+                elif task_id.startswith('task'):
+                    # task1 -> 1
+                    task_num = task_id[4:]
+                elif task_id.startswith('q'):
+                    # q1 -> 1
+                    task_num = task_id[1:]
+
+                # 统一使用taskX格式
+                if task_num:
+                    normalized_task_id = f"task{task_num}"
+                    logger.info(f"V2数据保存: {task_id} -> {normalized_task_id}_roi.json")
+
+            # 确保配置包含必要字段（使用原始task_id，因为可能来自前端请求）
+            # 注意: 必须在验证之前添加这些字段，因为validate_config需要它们
+            config['version'] = version
+            config['task_id'] = task_id
+            config['last_modified'] = datetime.now().isoformat()
+
+            # 验证配置 (在添加必需字段之后验证)
             validation_result = self.validate_config(config)
             if not validation_result['valid']:
                 return {
                     'success': False,
                     'message': f"配置验证失败: {', '.join(validation_result['errors'])}"
                 }
-            
-            # 确保配置包含必要字段
-            config['version'] = version
-            config['task_id'] = task_id
-            config['last_modified'] = datetime.now().isoformat()
-            
-            # 保存配置
+
+            # 保存配置（使用规范化的task_id作为文件名）
             config_dir = self.roi_configs_dir / version
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / f"{task_id}_roi.json"
+            config_path = config_dir / f"{normalized_task_id}_roi.json"
             
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)

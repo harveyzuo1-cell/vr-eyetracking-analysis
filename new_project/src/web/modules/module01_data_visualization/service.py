@@ -551,21 +551,40 @@ class DataVisualizationService:
             }
         """
         try:
-            # 构建背景图片路径
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            task_upper = task.upper()
-            image_path = project_root / "data" / "background_images" / version / f"{task_upper}.jpg"
+            bg_dir = project_root / "data" / "background_images" / version
+
+            # V2数据: level_X -> taskX.png
+            # V1数据: qX -> QX.jpg
+            if version == 'v2':
+                # 映射 level_X -> taskX
+                if task.startswith('level_'):
+                    task_num = task.split('_')[1]  # level_1 -> 1
+                    file_base = f"task{task_num}"
+                else:
+                    file_base = task
+
+                # 尝试多种扩展名
+                image_path = None
+                for ext in ['.png', '.jpg', '.jpeg']:
+                    candidate = bg_dir / f"{file_base}{ext}"
+                    if candidate.exists():
+                        image_path = candidate
+                        break
+            else:
+                # V1数据使用原逻辑
+                task_upper = task.upper()
+                image_path = bg_dir / f"{task_upper}.jpg"
 
             # 检查文件是否存在
-            exists = image_path.exists()
-
-            # 构建相对URL路径
-            if exists:
-                relative_path = f"/static/background_images/{version}/{task_upper}.jpg"
+            if image_path and image_path.exists():
+                relative_path = f"/static/background_images/{version}/{image_path.name}"
+                exists = True
             else:
                 relative_path = None
+                exists = False
 
-            logger.info(f"Background image for version={version}, task={task}: exists={exists}")
+            logger.info(f"Background image for version={version}, task={task}: path={relative_path}, exists={exists}")
 
             return {
                 "success": True,

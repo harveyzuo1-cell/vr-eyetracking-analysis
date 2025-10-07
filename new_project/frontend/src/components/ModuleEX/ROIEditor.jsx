@@ -184,17 +184,6 @@ const ROIEditor = () => {
         regions: normalizedRois
       };
 
-      console.log('📤 Saving ROI config:', {
-        version,
-        task_id: normalizedTaskId,
-        config,
-        regions_type: typeof rois,
-        regions_keys: Object.keys(rois),
-        regions_values: Object.entries(rois).map(([k, v]) => ({ key: k, isArray: Array.isArray(v), length: v?.length }))
-      });
-      console.log('📦 Full rois object:', JSON.stringify(rois, null, 2));
-      console.log('📦 Full config object:', JSON.stringify(config, null, 2));
-
       const response = await axios.post(`/api/config/roi`, {
         version,
         task_id: normalizedTaskId,
