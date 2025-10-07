@@ -272,10 +272,19 @@ class EventAnalyzer:
             # 读取数据
             df = pd.read_csv(file_path)
 
-            # 检查必要列
-            required_cols = ['x', 'y', 'milliseconds']
-            if not all(col in df.columns for col in required_cols):
-                raise ValueError(f"缺少必要列: {required_cols}")
+            # 检查必要列 (兼容 timestamp 或 milliseconds)
+            required_cols = ['x', 'y']
+            time_col = None
+
+            if 'milliseconds' in df.columns:
+                time_col = 'milliseconds'
+            elif 'timestamp' in df.columns:
+                time_col = 'timestamp'
+                # 将timestamp (Unix时间戳，秒) 转换为相对时间 (毫秒)
+                df['milliseconds'] = (df['timestamp'] - df['timestamp'].iloc[0]) * 1000
+
+            if time_col is None or not all(col in df.columns for col in required_cols):
+                raise ValueError(f"缺少必要列: {required_cols + ['milliseconds或timestamp']}")
 
             # 计算速度
             df = self.compute_velocity(df)
