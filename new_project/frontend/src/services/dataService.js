@@ -78,6 +78,14 @@ export const dataService = {
   importData: (data) => {
     return api.post(API_ENDPOINTS.dataImport, data);
   },
+
+  /**
+   * 检查校正完成度
+   * @param {string} version - 数据版本 (v1/v2/all)
+   */
+  checkCalibrationCompleteness: (version = 'all') => {
+    return api.get(API_ENDPOINTS.calibrationCompleteness, { version });
+  },
 };
 
 export default dataService;

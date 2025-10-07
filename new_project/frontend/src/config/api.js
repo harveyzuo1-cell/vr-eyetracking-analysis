@@ -31,6 +31,9 @@ export const API_ENDPOINTS = {
   mlTrain: '/ml/train',
   mlPredict: '/ml/predict',
   mlModels: '/ml/models',
+
+  // 校正管理
+  calibrationCompleteness: '/module01/calibration/completeness',
 };
 
 // 请求超时时间（毫秒）
