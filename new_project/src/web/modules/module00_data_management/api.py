@@ -24,6 +24,8 @@ data_service = DataManagementService()
 def scan_all():
     """
     扫描所有数据源 (Legacy v1 + EyeTracking v2)
+    注意：这是扫描原始数据源，不是已导入的数据
+    要获取已导入数据统计，请使用 /api/m00/imported-stats
 
     Returns:
         JSON response with scan results from both sources
@@ -31,20 +33,20 @@ def scan_all():
             "success": true,
             "legacy_data": {
                 "source_dir": "data/*_raw/",
-                "control": 22,
-                "mci": 22,
-                "ad": 21,
-                "total_subjects": 65
+                "control": 20,
+                "mci": 20,
+                "ad": 20,
+                "total_subjects": 60
             },
             "eye_tracking_data": {
                 "source_dir": "eye_tracking_data/",
-                "control": ~32,
-                "mci": ~32,
-                "ad": ~30,
-                "total_subjects": 94
+                "control": 77,
+                "mci": 8,
+                "ad": 8,
+                "total_subjects": 93
             },
             "summary": {
-                "total_subjects": 159,
+                "total_subjects": 153,
                 "sources": 2
             }
         }
@@ -61,6 +63,49 @@ def scan_all():
         return jsonify({
             'success': False,
             'error': f'扫描失败: {str(e)}'
+        }), 500
+
+
+@m00_bp.route('/imported-stats', methods=['GET'])
+def get_imported_stats():
+    """
+    获取已导入数据的统计信息（从metadata读取实际数据）
+
+    Returns:
+        JSON response with imported data statistics
+        {
+            "success": true,
+            "v1_data": {
+                "control": 20,
+                "mci": 20,
+                "ad": 20,
+                "total": 60
+            },
+            "v2_data": {
+                "control": 77,
+                "mci": 8,
+                "ad": 8,
+                "total": 93
+            },
+            "summary": {
+                "total_subjects": 153,
+                "v1_count": 60,
+                "v2_count": 93
+            }
+        }
+    """
+    try:
+        result = data_service.get_imported_data_stats()
+        return jsonify({
+            'success': True,
+            **result
+        }), 200
+
+    except Exception as e:
+        logger.error(f"获取已导入数据统计失败: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'查询失败: {str(e)}'
         }), 500
 
 

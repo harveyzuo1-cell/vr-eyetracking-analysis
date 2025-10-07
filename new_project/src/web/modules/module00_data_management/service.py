@@ -393,3 +393,77 @@ class DataManagementService:
         except Exception as e:
             logger.error(f"获取导入历史失败: {str(e)}", exc_info=True)
             raise
+
+    def get_imported_data_stats(self) -> Dict:
+        """
+        获取已导入数据的统计信息（从metadata读取）
+
+        Returns:
+            {
+                "v1_data": {
+                    "control": 20,
+                    "mci": 20,
+                    "ad": 20,
+                    "total": 60
+                },
+                "v2_data": {
+                    "control": 77,
+                    "mci": 8,
+                    "ad": 8,
+                    "total": 93
+                },
+                "summary": {
+                    "total_subjects": 153,
+                    "v1_count": 60,
+                    "v2_count": 93
+                }
+            }
+        """
+        try:
+            import json
+
+            # 直接读取subject_metadata.json文件
+            metadata_file = self.clinical_dir / 'subject_metadata.json'
+
+            if not metadata_file.exists():
+                return {
+                    "v1_data": {"control": 0, "mci": 0, "ad": 0, "total": 0},
+                    "v2_data": {"control": 0, "mci": 0, "ad": 0, "total": 0},
+                    "summary": {"total_subjects": 0, "v1_count": 0, "v2_count": 0}
+                }
+
+            with open(metadata_file, 'r', encoding='utf-8') as f:
+                all_metadata = json.load(f)
+
+            # 统计V1数据
+            v1_stats = {"control": 0, "mci": 0, "ad": 0, "total": 0}
+            v2_stats = {"control": 0, "mci": 0, "ad": 0, "total": 0}
+
+            for subject_id, metadata in all_metadata.items():
+                data_version = metadata.get("data_version", "")
+                group = metadata.get("group", "")
+
+                if data_version == "v1":
+                    if group in v1_stats:
+                        v1_stats[group] += 1
+                    v1_stats["total"] += 1
+                elif data_version == "v2":
+                    if group in v2_stats:
+                        v2_stats[group] += 1
+                    v2_stats["total"] += 1
+
+            summary = {
+                "total_subjects": v1_stats["total"] + v2_stats["total"],
+                "v1_count": v1_stats["total"],
+                "v2_count": v2_stats["total"]
+            }
+
+            return {
+                "v1_data": v1_stats,
+                "v2_data": v2_stats,
+                "summary": summary
+            }
+
+        except Exception as e:
+            logger.error(f"获取已导入数据统计失败: {str(e)}", exc_info=True)
+            raise

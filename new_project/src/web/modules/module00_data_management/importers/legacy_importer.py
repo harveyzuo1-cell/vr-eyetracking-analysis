@@ -80,20 +80,29 @@ class LegacyDataImporter:
 
             # 查找所有 {group}_group_X 目录
             pattern = f"{group}_group_*"
-            subject_dirs = sorted(source_dir.glob(pattern))
+            # 按数字排序，只包含目录（排除.zip等文件）
+            subject_dirs = sorted(
+                [d for d in source_dir.glob(pattern) if d.is_dir()],
+                key=lambda x: int(x.name.split('_')[-1]) if x.name.split('_')[-1].isdigit() else 999
+            )
 
             group_subjects = []
 
-            for subj_dir in subject_dirs:
+            for idx, subj_dir in enumerate(subject_dirs, start=1):
                 # 提取组号
                 parts = subj_dir.name.split('_')
                 if len(parts) >= 3:
-                    group_number = parts[-1]
+                    original_group_number = parts[-1]
                 else:
                     continue
 
-                # 生成subject_id
-                subject_id = f"{group}_legacy_{group_number}"
+                # 生成subject_id：对于AD组，使用连续编号1-20；其他组保持原组号
+                if group == 'ad':
+                    # AD组：ad_group_3-22 映射为 ad_legacy_1-20
+                    subject_id = f"{group}_legacy_{idx}"
+                else:
+                    # Control和MCI组：保持原组号
+                    subject_id = f"{group}_legacy_{original_group_number}"
 
                 # 检查文件完整性
                 required_files = ["1.txt", "2.txt", "3.txt", "4.txt", "5.txt"]

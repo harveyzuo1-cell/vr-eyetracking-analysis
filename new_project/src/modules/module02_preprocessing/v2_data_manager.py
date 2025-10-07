@@ -186,18 +186,22 @@ class V2DataManager:
                 results['skipped'] += 1
                 continue
 
-            # 检查是否已存在（检查新ID或通过original_id+timestamp查找）
+            # 检查是否已存在（检查新ID或通过timestamp查找）
             existing = self.subject_manager.get_subject(new_id)
 
-            # 如果新ID不存在，检查是否有其他受试者使用了这个original_id+timestamp
-            if not existing:
-                all_subjects = self.subject_manager.get_all_subjects(group=v2_subject['group'], data_version='v2')
-                for subj in all_subjects:
+            # 如果新ID不存在，检查是否有其他受试者使用了相同timestamp（防止重复导入）
+            # 注意：timestamp在V2数据中是唯一的（每次实验有唯一的时间戳）
+            if not existing and timestamp:
+                # 检查所有V2受试者（不限group，因为timestamp全局唯一）
+                all_v2_subjects = self.subject_manager.get_all_subjects(data_version='v2')
+                for subj in all_v2_subjects:
                     meta = subj.get('metadata', {})
-                    if (meta.get('original_id') == old_id and
-                        meta.get('timestamp') == timestamp):
+                    existing_timestamp = meta.get('timestamp', '')
+
+                    # 只要timestamp相同，就认为是重复记录
+                    if existing_timestamp == timestamp:
                         existing = subj
-                        logger.info(f"发现已存在的记录: {old_id}@{timestamp} -> {subj['subject_id']}")
+                        logger.info(f"发现已存在的记录（相同timestamp）: {timestamp} -> {subj['subject_id']}")
                         break
 
             if existing:
@@ -207,11 +211,46 @@ class V2DataManager:
                     'subject_id': old_id,
                     'timestamp': timestamp,
                     'new_id': existing['subject_id'],
-                    'error': '受试者已存在'
+                    'error': '受试者已存在（timestamp重复）'
                 })
                 continue
 
             try:
+                # V2数据任务验证：确定tasks_available
+                # V2数据使用 level_1 ~ level_5 命名
+                tasks_available = ['level_1', 'level_2', 'level_3', 'level_4', 'level_5']
+
+                # 如果提供了data_path，验证文件完整性
+                data_path = v2_subject.get('data_path', '')
+                if data_path:
+                    from pathlib import Path as PathLib
+                    data_dir = PathLib(data_path)
+
+                    if data_dir.exists():
+                        # 检查哪些level文件实际存在
+                        available_tasks = []
+                        for level in range(1, 6):
+                            level_file = data_dir / f'level_{level}.txt'
+                            if level_file.exists():
+                                available_tasks.append(f'level_{level}')
+
+                        # 只导入完整的数据（有5个level文件）
+                        if len(available_tasks) != 5:
+                            logger.warning(
+                                f"V2受试者 {old_id} 数据不完整: "
+                                f"只有 {len(available_tasks)}/5 个文件，跳过导入"
+                            )
+                            results['skipped'] += 1
+                            results['errors'].append({
+                                'subject_id': old_id,
+                                'timestamp': timestamp,
+                                'new_id': new_id,
+                                'error': f'数据不完整: 只有 {len(available_tasks)}/5 个level文件'
+                            })
+                            continue
+
+                        tasks_available = available_tasks
+
                 # 创建受试者
                 self.subject_manager.create_subject(
                     subject_id=new_id,
@@ -229,9 +268,22 @@ class V2DataManager:
                         'original_id': old_id,  # 保留原始ID
                         'timestamp': v2_subject.get('timestamp', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                         'v2_import_date': datetime.now().isoformat(),
-                        'data_path': v2_subject.get('data_path', '')
+                        'data_path': data_path,
+                        'tasks_verified': True  # 标记已验证文件完整性
                     }
                 )
+
+                # 手动更新tasks_available（因为create_subject默认为空）
+                created_subject = self.subject_manager.get_subject(new_id)
+                if created_subject:
+                    created_subject['tasks_available'] = tasks_available
+                    created_subject['task_count'] = len(tasks_available)
+                    # 保存更新
+                    self.subject_manager.update_subject(
+                        subject_id=new_id,
+                        demographics=created_subject.get('demographics'),
+                        mmse=created_subject.get('mmse')
+                    )
 
                 results['imported'] += 1
                 logger.debug(f"导入成功: {old_id} -> {new_id}")
