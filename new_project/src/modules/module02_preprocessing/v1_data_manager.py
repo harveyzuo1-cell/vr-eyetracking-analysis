@@ -31,14 +31,14 @@ class V1DataManager:
 
     def scan_v1_subjects(self) -> List[Dict]:
         """
-        扫描已导入到subject_info的V1受试者数据
+        扫描Module01中已导入的V1受试者数据
 
-        从subject_info目录读取所有data_version='v1'的受试者
+        从01_raw/clinical/subject_metadata.json读取所有data_version='v1'的受试者
 
         Returns:
             [
                 {
-                    'subject_id': 'v1_control_001',
+                    'subject_id': 'control_legacy_1',
                     'group': 'control',
                     'name': '张三',
                     'hospital_id': 'H001',
@@ -49,68 +49,66 @@ class V1DataManager:
                     'data_version': 'v1',
                     'has_mmse': True,
                     'mmse_score': 28,
-                    'status': 'imported'
+                    'status': 'available'
                 },
                 ...
             ]
         """
-        logger.info("开始扫描已导入的V1受试者数据...")
+        logger.info("开始扫描Module01中的V1受试者数据...")
 
-        # 获取subject_info目录
-        subject_info_dir = self.data_dir / 'subject_info'
+        # 从Module01的clinical目录读取subject_metadata.json
+        clinical_dir = self.data_dir / '01_raw' / 'clinical'
+        metadata_file = clinical_dir / 'subject_metadata.json'
 
-        if not subject_info_dir.exists():
-            logger.warning(f"subject_info目录不存在: {subject_info_dir}")
+        if not metadata_file.exists():
+            logger.warning(f"subject_metadata.json不存在: {metadata_file}")
+            return []
+
+        try:
+            with open(metadata_file, 'r', encoding='utf-8') as f:
+                all_subjects = json.load(f)
+        except Exception as e:
+            logger.error(f"读取subject_metadata.json失败: {e}")
             return []
 
         v1_subjects = []
 
-        # 遍历所有组别
-        for group in ['control', 'mci', 'ad']:
-            group_dir = subject_info_dir / group
-
-            if not group_dir.exists():
-                logger.debug(f"组别目录不存在: {group_dir}")
+        # 遍历所有受试者，筛选data_version='v1'的
+        for subject_id, subject_data in all_subjects.items():
+            # 只返回data_version='v1'的受试者
+            if subject_data.get('data_version') != 'v1':
                 continue
 
-            # 读取所有JSON文件
-            for subject_file in group_dir.glob('*.json'):
-                if subject_file.name == 'index.json':
-                    continue
+            try:
+                # 提取demographics信息
+                demographics = subject_data.get('demographics', {})
 
-                try:
-                    with open(subject_file, 'r', encoding='utf-8') as f:
-                        subject_data = json.load(f)
+                # 提取MMSE信息
+                has_mmse = subject_data.get('mmse') is not None
+                mmse_score = None
+                if has_mmse:
+                    mmse_data = subject_data.get('mmse', {})
+                    mmse_score = mmse_data.get('total_score')
 
-                    # 只返回data_version='v1'的受试者
-                    if subject_data.get('data_version') != 'v1':
-                        continue
+                v1_subjects.append({
+                    'subject_id': subject_id,
+                    'group': subject_data.get('group', 'unknown'),
+                    'name': demographics.get('name', 'N/A'),
+                    'hospital_id': demographics.get('hospital_id', 'N/A'),
+                    'age': demographics.get('age', 'N/A'),
+                    'gender': demographics.get('gender', 'N/A'),
+                    'education_level': demographics.get('education_level', 'N/A'),
+                    'timestamp': subject_data.get('created_at', 'N/A'),
+                    'data_version': 'v1',
+                    'has_mmse': has_mmse,
+                    'mmse_score': mmse_score,
+                    'status': 'available',  # 可导入状态
+                    'task_count': subject_data.get('task_count', 0)
+                })
 
-                    # 提取MMSE信息
-                    has_mmse = subject_data.get('mmse') is not None
-                    mmse_score = None
-                    if has_mmse:
-                        mmse_data = subject_data.get('mmse', {})
-                        mmse_score = mmse_data.get('total_score')
-
-                    v1_subjects.append({
-                        'subject_id': subject_data.get('subject_id'),
-                        'group': subject_data.get('group', group),
-                        'name': subject_data.get('name', 'N/A'),
-                        'hospital_id': subject_data.get('hospital_id', 'N/A'),
-                        'age': subject_data.get('age', 'N/A'),
-                        'gender': subject_data.get('gender', 'N/A'),
-                        'education_level': subject_data.get('education_level', 'N/A'),
-                        'timestamp': subject_data.get('created_at', subject_data.get('timestamp', 'N/A')),
-                        'data_version': 'v1',
-                        'has_mmse': has_mmse,
-                        'mmse_score': mmse_score,
-                        'status': 'imported'
-                    })
-
-                except Exception as e:
-                    logger.error(f"读取受试者文件失败 {subject_file}: {str(e)}")
-                    continue
+            except Exception as e:
+                logger.error(f"处理受试者数据失败 {subject_id}: {str(e)}")
+                continue
 
         logger.info(f"扫描完成，找到 {len(v1_subjects)} 个V1受试者")
         return v1_subjects
