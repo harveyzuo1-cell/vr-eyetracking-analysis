@@ -180,15 +180,29 @@ class EventAnalysisService:
                 # 提取受试者ID
                 subjects_in_group = set()
                 for f in csv_files:
-                    parts = f.stem.split('_')
-                    if len(parts) >= 3:
-                        # 格式: {subject_id}_{task_id}_calibrated
-                        # 或: {group}_{subject_id}_{task_id}_calibrated
-                        if parts[0] == grp:
-                            sid = parts[1]
-                        else:
-                            sid = parts[0]
-                        subjects_in_group.add(sid)
+                    # 文件名格式: {group}_{subject_id}_{task_id}_calibrated.csv
+                    # 例如: control_legacy_1_q1_calibrated.csv
+                    # 需要从文件名中提取完整的subject_id
+
+                    # 移除后缀 "_calibrated"
+                    fname = f.stem.replace('_calibrated', '')
+                    # 格式: control_legacy_1_q1
+
+                    parts = fname.split('_')
+
+                    if len(parts) < 3:
+                        continue
+
+                    # 提取subject_id: 去掉第一个部分(group)和最后一个部分(task_id)
+                    # control_legacy_1_q1 -> legacy_1
+                    if parts[0] == grp:
+                        # 中间所有部分都是subject_id
+                        sid = '_'.join(parts[1:-1])
+                    else:
+                        # 如果第一部分不是group，说明是非标准格式，跳过
+                        continue
+
+                    subjects_in_group.add(sid)
 
                 # 过滤受试者
                 if subject_ids:
