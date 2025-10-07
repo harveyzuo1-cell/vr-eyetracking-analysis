@@ -36,9 +36,10 @@ MMSE_QUESTIONS = {
         'name_en': 'Place Orientation'
     },
     # Q3: 即刻记忆 (Immediate Recall) - 满分3分
+    # 注意：q3_immediate不在field_scores中，所以会直接使用字段值(0-3)作为得分
     'immediate_recall': {
         'fields': ['q3_immediate'],
-        'field_scores': {'q3_immediate': 1},  # 特殊：这一题可以得0-3分
+        'field_scores': {},  # 空字典：q3_immediate不在此处定义，直接使用字段值
         'max_score': 3,
         'name_zh': '即刻记忆',
         'name_en': 'Immediate Recall'
