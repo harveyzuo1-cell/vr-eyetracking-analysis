@@ -542,3 +542,138 @@ class CalibrationService:
             'params_file': str(current_params_file),
             'metadata': version_metadata
         }
+
+    def check_calibration_completeness(self, data_version: str = 'all') -> Dict:
+        """
+        检查校正完成度
+
+        Args:
+            data_version: 数据版本 ('v1', 'v2', 'all')
+
+        Returns:
+            {
+                'summary': {
+                    'total_subjects': 144,
+                    'total_tasks': 720,
+                    'calibrated_tasks': 350,
+                    'missing_tasks': 370,
+                    'completion_rate': 48.6
+                },
+                'by_group': {
+                    'control': {...},
+                    'mci': {...},
+                    'ad': {...}
+                },
+                'missing_details': [
+                    {
+                        'subject_id': 'control_legacy_1',
+                        'group': 'control',
+                        'data_version': 'v1',
+                        'missing_tasks': ['q1', 'q3']
+                    },
+                    ...
+                ]
+            }
+        """
+        logger.info(f"Checking calibration completeness for data_version={data_version}")
+
+        # 读取metadata
+        metadata_file = self.raw_dir / 'clinical' / 'subject_metadata.json'
+        with open(metadata_file, 'r', encoding='utf-8') as f:
+            all_subjects = json.load(f)
+
+        # 过滤受试者
+        if data_version == 'all':
+            subjects = all_subjects
+        else:
+            subjects = {
+                sid: data for sid, data in all_subjects.items()
+                if data.get('data_version') == data_version
+            }
+
+        # 统计数据
+        total_subjects = len(subjects)
+        total_tasks = 0
+        calibrated_tasks = 0
+        missing_details = []
+
+        by_group = {
+            'control': {'subjects': 0, 'total_tasks': 0, 'calibrated': 0, 'missing': 0},
+            'mci': {'subjects': 0, 'total_tasks': 0, 'calibrated': 0, 'missing': 0},
+            'ad': {'subjects': 0, 'total_tasks': 0, 'calibrated': 0, 'missing': 0}
+        }
+
+        # 遍历每个受试者
+        for subject_id, subject_data in subjects.items():
+            group = subject_data.get('group', 'unknown')
+            if group not in by_group:
+                continue
+
+            by_group[group]['subjects'] += 1
+
+            tasks_available = subject_data.get('tasks_available', [])
+            subject_total_tasks = len(tasks_available)
+            total_tasks += subject_total_tasks
+            by_group[group]['total_tasks'] += subject_total_tasks
+
+            missing_tasks = []
+
+            # 检查每个任务是否已校正
+            for task in tasks_available:
+                calibrated_file = (
+                    self.processed_dir / group /
+                    f"{subject_id}_{task}_calibrated.csv"
+                )
+
+                if calibrated_file.exists():
+                    calibrated_tasks += 1
+                    by_group[group]['calibrated'] += 1
+                else:
+                    missing_tasks.append(task)
+                    by_group[group]['missing'] += 1
+
+            # 记录缺失详情
+            if missing_tasks:
+                missing_details.append({
+                    'subject_id': subject_id,
+                    'group': group,
+                    'data_version': subject_data.get('data_version'),
+                    'missing_tasks': missing_tasks,
+                    'missing_count': len(missing_tasks),
+                    'total_tasks': subject_total_tasks
+                })
+
+        # 计算完成率
+        completion_rate = (calibrated_tasks / total_tasks * 100) if total_tasks > 0 else 0
+
+        # 计算每组完成率
+        for group_data in by_group.values():
+            if group_data['total_tasks'] > 0:
+                group_data['completion_rate'] = (
+                    group_data['calibrated'] / group_data['total_tasks'] * 100
+                )
+            else:
+                group_data['completion_rate'] = 0
+
+        result = {
+            'summary': {
+                'data_version': data_version,
+                'total_subjects': total_subjects,
+                'total_tasks': total_tasks,
+                'calibrated_tasks': calibrated_tasks,
+                'missing_tasks': total_tasks - calibrated_tasks,
+                'completion_rate': round(completion_rate, 2)
+            },
+            'by_group': by_group,
+            'missing_details': sorted(
+                missing_details,
+                key=lambda x: (x['group'], x['subject_id'])
+            )
+        }
+
+        logger.info(
+            f"Calibration check complete: {calibrated_tasks}/{total_tasks} "
+            f"({completion_rate:.2f}%) calibrated"
+        )
+
+        return result

@@ -398,6 +398,86 @@ def restore_version():
         }), 500
 
 
+@calibration_bp.route('/completeness', methods=['GET'])
+def check_completeness():
+    """
+    检查校正完成度
+
+    GET /api/module01/calibration/completeness?version=v1
+
+    Query Parameters:
+        version: 数据版本 ('v1', 'v2', 'all'), 默认 'all'
+
+    Response:
+    {
+        "success": true,
+        "data": {
+            "summary": {
+                "data_version": "v1",
+                "total_subjects": 60,
+                "total_tasks": 300,
+                "calibrated_tasks": 150,
+                "missing_tasks": 150,
+                "completion_rate": 50.0
+            },
+            "by_group": {
+                "control": {
+                    "subjects": 20,
+                    "total_tasks": 100,
+                    "calibrated": 50,
+                    "missing": 50,
+                    "completion_rate": 50.0
+                },
+                ...
+            },
+            "missing_details": [
+                {
+                    "subject_id": "control_legacy_1",
+                    "group": "control",
+                    "data_version": "v1",
+                    "missing_tasks": ["q1", "q3"],
+                    "missing_count": 2,
+                    "total_tasks": 5
+                },
+                ...
+            ]
+        }
+    }
+    """
+    try:
+        version = request.args.get('version', 'all')
+
+        # 验证version参数
+        if version not in ['v1', 'v2', 'all']:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid version parameter. Must be "v1", "v2", or "all".'
+            }), 400
+
+        logger.info(f"Checking calibration completeness for version={version}")
+
+        # 调用服务检查完成度
+        result = calibration_service.check_calibration_completeness(version)
+
+        logger.info(
+            f"Completeness check complete: {result['summary']['completion_rate']}% "
+            f"({result['summary']['calibrated_tasks']}/{result['summary']['total_tasks']})"
+        )
+
+        return jsonify({
+            'success': True,
+            'data': result
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error checking calibration completeness: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': '检查校正完成度失败',
+            'error': str(e)
+        }), 500
+
+
 @calibration_bp.route('/health', methods=['GET'])
 def health_check():
     """健康检查端点"""
@@ -412,6 +492,7 @@ def health_check():
             'DELETE /api/module01/calibration/delete',
             'GET /api/module01/calibration/versions',
             'POST /api/module01/calibration/restore',
+            'GET /api/module01/calibration/completeness',
             'GET /api/module01/calibration/health'
         ]
     }), 200
