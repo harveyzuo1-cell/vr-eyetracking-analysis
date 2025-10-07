@@ -26,6 +26,7 @@ class V1DataManager:
         """
         self.data_dir = Path(data_dir)
         self.v1_scan_dir = self.data_dir / 'v1_raw_data'  # V1原始数据目录
+        self.subject_info_dir = self.data_dir / 'subject_info'  # 受试者信息目录
 
         logger.info(f"初始化V1数据管理器: {self.v1_scan_dir}")
 
@@ -83,16 +84,38 @@ class V1DataManager:
                 # 提取demographics信息
                 demographics = subject_data.get('demographics', {})
 
-                # 提取MMSE信息
-                has_mmse = subject_data.get('mmse') is not None
+                # 重要：优先从subject_info读取MMSE数据（保护已录入的真实MMSE数据）
+                # subject_metadata.json中的mmse可能为null，但subject_info中可能有用户手动录入的完整MMSE
+                has_mmse = False
                 mmse_score = None
-                if has_mmse:
-                    mmse_data = subject_data.get('mmse', {})
-                    mmse_score = mmse_data.get('total_score')
+
+                # 尝试从subject_info目录读取已存在的MMSE数据
+                group = subject_data.get('group', 'unknown')
+                subject_file = self.subject_info_dir / group / f'{subject_id}.json'
+
+                if subject_file.exists():
+                    try:
+                        with open(subject_file, 'r', encoding='utf-8') as f:
+                            existing_subject = json.load(f)
+
+                        # 从subject_info读取MMSE（这是真实录入的数据）
+                        if existing_subject.get('mmse'):
+                            has_mmse = True
+                            mmse_score = existing_subject['mmse'].get('total_score')
+                            logger.debug(f"{subject_id}: 从subject_info读取MMSE={mmse_score}")
+                    except Exception as e:
+                        logger.warning(f"读取subject_info中的MMSE失败 {subject_id}: {e}")
+
+                # 如果subject_info中没有，才从subject_metadata.json读取
+                if not has_mmse:
+                    if subject_data.get('mmse'):
+                        has_mmse = True
+                        mmse_score = subject_data['mmse'].get('total_score')
+                        logger.debug(f"{subject_id}: 从subject_metadata读取MMSE={mmse_score}")
 
                 v1_subjects.append({
                     'subject_id': subject_id,
-                    'group': subject_data.get('group', 'unknown'),
+                    'group': group,
                     'name': demographics.get('name', 'N/A'),
                     'hospital_id': demographics.get('hospital_id', 'N/A'),
                     'age': demographics.get('age', 'N/A'),
