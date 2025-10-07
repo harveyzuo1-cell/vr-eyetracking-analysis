@@ -25,8 +25,8 @@ class EventAnalysisService:
         self.results_dir = self.data_root / '04_features' / 'events'
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
-        # 初始化事件分析器
-        self.analyzer = EventAnalyzer()
+        # 默认分析器（使用默认IVT参数）
+        self.analyzer = None
 
         logger.info(f"事件分析服务初始化完成")
 
@@ -65,7 +65,9 @@ class EventAnalysisService:
             return None
 
     def analyze_single_file(self, subject_id: str, group: str, task_id: str,
-                           data_version: str = 'v1') -> Dict:
+                           data_version: str = 'v1',
+                           velocity_threshold: float = 40.0,
+                           min_fixation_duration: float = 100) -> Dict:
         """
         分析单个受试者的单个任务
 
@@ -74,11 +76,22 @@ class EventAnalysisService:
             group: 分组 (control/mci/ad)
             task_id: 任务ID
             data_version: 数据版本
+            velocity_threshold: IVT速度阈值 (deg/s)
+            min_fixation_duration: 最小注视时长 (ms)
 
         Returns:
             分析结果字典
         """
         try:
+            # 初始化或更新分析器
+            if self.analyzer is None or \
+               self.analyzer.velocity_threshold != velocity_threshold or \
+               self.analyzer.min_fixation_duration != min_fixation_duration:
+                self.analyzer = EventAnalyzer(
+                    velocity_threshold=velocity_threshold,
+                    min_fixation_duration=min_fixation_duration
+                )
+
             # 构建文件路径
             file_pattern = f'{subject_id}_{task_id}_calibrated.csv'
             file_path = self.processed_dir / group / file_pattern
@@ -117,7 +130,9 @@ class EventAnalysisService:
             }
 
     def analyze_subject(self, subject_id: str, group: str, data_version: str = 'v1',
-                       tasks: Optional[List[str]] = None) -> Dict:
+                       tasks: Optional[List[str]] = None,
+                       velocity_threshold: float = 40.0,
+                       min_fixation_duration: float = 100) -> Dict:
         """
         分析单个受试者的所有任务
 
@@ -126,6 +141,8 @@ class EventAnalysisService:
             group: 分组
             data_version: 数据版本
             tasks: 任务列表 (None表示分析全部5个任务)
+            velocity_threshold: IVT速度阈值 (deg/s)
+            min_fixation_duration: 最小注视时长 (ms)
 
         Returns:
             分析结果字典
@@ -135,7 +152,10 @@ class EventAnalysisService:
 
         results = []
         for task_id in tasks:
-            result = self.analyze_single_file(subject_id, group, task_id, data_version)
+            result = self.analyze_single_file(
+                subject_id, group, task_id, data_version,
+                velocity_threshold, min_fixation_duration
+            )
             results.append(result)
 
         # 统计
@@ -152,7 +172,9 @@ class EventAnalysisService:
         }
 
     def analyze_batch(self, group: Optional[str] = None, data_version: str = 'v1',
-                     subject_ids: Optional[List[str]] = None) -> Dict:
+                     subject_ids: Optional[List[str]] = None,
+                     velocity_threshold: float = 40.0,
+                     min_fixation_duration: float = 100) -> Dict:
         """
         批量分析
 
@@ -160,11 +182,21 @@ class EventAnalysisService:
             group: 分组筛选 (None表示全部)
             data_version: 数据版本
             subject_ids: 受试者ID列表 (None表示全部)
+            velocity_threshold: IVT速度阈值 (deg/s)
+            min_fixation_duration: 最小注视时长 (ms)
 
         Returns:
             批量分析结果
         """
         try:
+            # 初始化分析器（使用指定的IVT参数）
+            self.analyzer = EventAnalyzer(
+                velocity_threshold=velocity_threshold,
+                min_fixation_duration=min_fixation_duration
+            )
+
+            logger.info(f"批量分析开始: IVT参数 velocity_threshold={velocity_threshold}, min_fixation_duration={min_fixation_duration}")
+
             # 扫描可用文件
             groups_to_process = [group] if group else ['control', 'mci', 'ad']
             all_results = []
@@ -210,7 +242,11 @@ class EventAnalysisService:
 
                 # 分析每个受试者
                 for sid in sorted(subjects_in_group):
-                    result = self.analyze_subject(sid, grp, data_version)
+                    result = self.analyze_subject(
+                        sid, grp, data_version,
+                        velocity_threshold=velocity_threshold,
+                        min_fixation_duration=min_fixation_duration
+                    )
                     all_results.append(result)
 
             return {

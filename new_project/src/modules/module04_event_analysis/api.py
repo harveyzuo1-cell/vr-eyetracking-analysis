@@ -108,7 +108,9 @@ def analyze_batch():
         {
             "group": "control",  // 可选
             "data_version": "v1",
-            "subject_ids": ["sub_001", "sub_002"]  // 可选
+            "subject_ids": ["sub_001", "sub_002"],  // 可选
+            "velocity_threshold": 40.0,  // IVT速度阈值 (deg/s)
+            "min_fixation_duration": 100  // 最小注视时长 (ms)
         }
     """
     try:
@@ -118,7 +120,17 @@ def analyze_batch():
         data_version = data.get('data_version', 'v1')
         subject_ids = data.get('subject_ids')
 
-        result = service.analyze_batch(group, data_version, subject_ids)
+        # IVT参数
+        velocity_threshold = data.get('velocity_threshold', 40.0)
+        min_fixation_duration = data.get('min_fixation_duration', 100)
+
+        result = service.analyze_batch(
+            group=group,
+            data_version=data_version,
+            subject_ids=subject_ids,
+            velocity_threshold=velocity_threshold,
+            min_fixation_duration=min_fixation_duration
+        )
 
         return jsonify(result)
 
