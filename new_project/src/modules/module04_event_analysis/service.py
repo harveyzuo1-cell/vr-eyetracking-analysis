@@ -10,6 +10,7 @@ import pandas as pd
 from config.settings import Config
 from src.utils.logger import setup_logger
 from .event_analyzer import EventAnalyzer
+from src.modules.module02_preprocessing.subject_manager import SubjectManager
 
 logger = setup_logger(__name__)
 
@@ -27,6 +28,9 @@ class EventAnalysisService:
 
         # 默认分析器（使用默认IVT参数）
         self.analyzer = None
+
+        # 初始化SubjectManager用于获取MMSE数据
+        self.subject_manager = SubjectManager()
 
         logger.info(f"事件分析服务初始化完成")
 
@@ -407,3 +411,134 @@ class EventAnalysisService:
             'total_rois': len(roi_list),
             'roi_statistics': roi_list
         }
+
+    def get_feature_statistics(self, group: Optional[str] = None,
+                               data_version: str = 'v1',
+                               velocity_threshold: float = 40.0,
+                               min_fixation_duration: float = 100) -> Dict:
+        """
+        获取特征统计数据（每个受试者-任务一行）
+        
+        特征包括：
+        - 受试者信息 (subject_id, group)
+        - 任务信息 (task_id)
+        - ROI占比 (bg_ratio, inst_ratio, kw_ratio)
+        - 事件统计 (total_fixation_time, total_fixations, avg_fixation_duration,
+                   total_saccades, avg_saccade_amplitude, task_total_time)
+        - MMSE分数 (mmse_total_score, mmse_task_score)
+        
+        Args:
+            group: 分组筛选
+            data_version: 数据版本
+            velocity_threshold: IVT速度阈值
+            min_fixation_duration: 最小注视时长
+            
+        Returns:
+            特征统计数据列表
+        """
+        try:
+            # 执行批量分析
+            batch_result = self.analyze_batch(
+                group=group,
+                data_version=data_version,
+                velocity_threshold=velocity_threshold,
+                min_fixation_duration=min_fixation_duration
+            )
+            
+            if not batch_result['success']:
+                return batch_result
+            
+            features_list = []
+            
+            for subject_result in batch_result['results']:
+                subject_id = subject_result['subject_id']
+                grp = subject_result['group']
+                
+                # 获取该受试者的MMSE数据
+                subject_data = self.subject_manager.get_subject(subject_id)
+                mmse_total_score = None
+                if subject_data and 'mmse' in subject_data:
+                    mmse_total_score = subject_data['mmse'].get('total_score')
+                
+                # 遍历每个任务
+                for task_result in subject_result['results']:
+                    if not task_result.get('success', False):
+                        continue
+                    
+                    task_id = task_result['task_id']
+                    fixations = task_result.get('fixations', [])
+                    saccades = task_result.get('saccades', [])
+                    
+                    # 计算ROI占比
+                    roi_time = {'bg': 0, 'inst': 0, 'kw': 0}
+                    total_fixation_time = 0
+                    
+                    for fix in fixations:
+                        duration = fix['duration_ms']
+                        total_fixation_time += duration
+                        
+                        roi = fix.get('roi', '')
+                        if roi:
+                            # 根据ROI ID前缀判断类型
+                            if roi.startswith('BG_'):
+                                roi_time['bg'] += duration
+                            elif roi.startswith('INST_'):
+                                roi_time['inst'] += duration
+                            elif roi.startswith('KW_'):
+                                roi_time['kw'] += duration
+                    
+                    # 计算占比
+                    bg_ratio = (roi_time['bg'] / total_fixation_time * 100) if total_fixation_time > 0 else 0
+                    inst_ratio = (roi_time['inst'] / total_fixation_time * 100) if total_fixation_time > 0 else 0
+                    kw_ratio = (roi_time['kw'] / total_fixation_time * 100) if total_fixation_time > 0 else 0
+                    
+                    # 计算平均Fixation时长
+                    avg_fixation_duration = total_fixation_time / len(fixations) if fixations else 0
+                    
+                    # 计算平均Saccade幅度
+                    total_saccade_amplitude = sum([sacc['amplitude'] for sacc in saccades])
+                    avg_saccade_amplitude = total_saccade_amplitude / len(saccades) if saccades else 0
+                    
+                    # 任务总时间 = 所有fixation时间 + 所有saccade时间
+                    total_saccade_time = sum([sacc['duration_ms'] for sacc in saccades])
+                    task_total_time = total_fixation_time + total_saccade_time
+                    
+                    # 获取对应任务的MMSE分项分数（如果有的话）
+                    mmse_task_score = None
+                    if subject_data and 'mmse' in subject_data:
+                        # 尝试根据task_id找到对应的MMSE分项
+                        # Q1-Q5可能对应MMSE的不同维度，这里简化处理
+                        sub_scores = subject_data['mmse'].get('sub_scores', {})
+                        # 这里需要根据实际的MMSE结构调整映射关系
+                        # 暂时不设置task_score，因为需要明确task_id和MMSE分项的对应关系
+                        pass
+                    
+                    features_list.append({
+                        'subject_id': subject_id,
+                        'group': grp,
+                        'task_id': task_id,
+                        'bg_ratio': round(bg_ratio, 2),
+                        'inst_ratio': round(inst_ratio, 2),
+                        'kw_ratio': round(kw_ratio, 2),
+                        'total_fixation_time': round(total_fixation_time, 2),
+                        'total_fixations': len(fixations),
+                        'avg_fixation_duration': round(avg_fixation_duration, 2),
+                        'total_saccades': len(saccades),
+                        'avg_saccade_amplitude': round(avg_saccade_amplitude, 4),
+                        'task_total_time': round(task_total_time, 2),
+                        'mmse_total_score': mmse_total_score,
+                        'mmse_task_score': mmse_task_score
+                    })
+            
+            return {
+                'success': True,
+                'total_records': len(features_list),
+                'features': features_list
+            }
+            
+        except Exception as e:
+            logger.error(f"特征统计失败: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }

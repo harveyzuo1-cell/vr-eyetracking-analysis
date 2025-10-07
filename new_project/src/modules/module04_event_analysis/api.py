@@ -194,3 +194,40 @@ def get_roi_stats():
             'success': False,
             'error': str(e)
         }), 500
+
+@m04_bp.route('/features', methods=['POST'])
+def get_features():
+    """
+    获取特征统计数据 (每个受试者-任务一行)
+    
+    Request Body:
+        {
+            "group": "control",  // 可选
+            "data_version": "v1",
+            "velocity_threshold": 40.0,
+            "min_fixation_duration": 100
+        }
+    """
+    try:
+        data = request.get_json() or {}
+        
+        group = data.get('group')
+        data_version = data.get('data_version', 'v1')
+        velocity_threshold = data.get('velocity_threshold', 40.0)
+        min_fixation_duration = data.get('min_fixation_duration', 100)
+        
+        result = service.get_feature_statistics(
+            group=group,
+            data_version=data_version,
+            velocity_threshold=velocity_threshold,
+            min_fixation_duration=min_fixation_duration
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"获取特征统计失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
