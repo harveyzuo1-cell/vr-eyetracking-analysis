@@ -3,6 +3,7 @@
 导入 eye_tracking_data/ 目录中的新版数据(v2)
 """
 import json
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -66,6 +67,61 @@ class EyeTrackingDataImporter:
         self.metadata_manager = MetadataManager(
             str(self.base_dir / "new_project" / "data" / "01_raw" / "clinical")
         )
+
+    def _get_next_v2_sequence_number(self, group_code: str) -> int:
+        """
+        获取指定组别的下一个V2序号
+
+        Args:
+            group_code: 组别代码 (control/mci/ad)
+
+        Returns:
+            下一个可用的序号
+        """
+        # 获取所有已存在的V2受试者
+        all_metadata = self.metadata_manager.load_all_subjects()
+
+        # 统计该组别的最大序号
+        max_seq = 0
+        pattern = re.compile(rf'^v2_{group_code}_(\d+)$')
+
+        for subject_id in all_metadata.keys():
+            match = pattern.match(subject_id)
+            if match:
+                seq = int(match.group(1))
+                max_seq = max(max_seq, seq)
+
+        return max_seq + 1
+
+    def _generate_v2_subject_id(self, group_code: str, timestamp: str) -> str:
+        """
+        生成V2格式的规范化subject_id
+
+        格式: v2_{group}_{序号}
+        例如: v2_control_001, v2_mci_002
+
+        Args:
+            group_code: 组别代码 (control/mci/ad)
+            timestamp: 时间戳，用于检查是否已存在
+
+        Returns:
+            规范化的subject_id
+        """
+        # 检查是否已经导入过这个timestamp
+        all_metadata = self.metadata_manager.load_all_subjects()
+
+        for subject_id, meta in all_metadata.items():
+            if meta.get('data_version') == 'v2':
+                existing_timestamp = meta.get('metadata', {}).get('timestamp', '')
+                if existing_timestamp == timestamp:
+                    # 已经导入过，返回现有ID
+                    return subject_id
+
+        # 获取下一个序号
+        seq = self._get_next_v2_sequence_number(group_code)
+
+        # 生成新ID
+        return f"v2_{group_code}_{seq:03d}"
 
     def load_data_index(self) -> Dict:
         """
@@ -218,28 +274,32 @@ class EyeTrackingDataImporter:
         group_raw = metadata.get("group", "custom")
         group_code = GROUP_MAPPING.get(group_raw, "custom")
 
-        # 生成subject_id
+        # 生成规范化的V2 subject_id (v2_{group}_{序号})
+        v2_subject_id = self._generate_v2_subject_id(group_code, timestamp)
+
+        # 保存原始hospital_id用于追溯
         hospital_id = metadata.get("hospital_id", "unknown")
-        subject_id = f"{group_code}_{hospital_id}"
+        original_id = f"{group_code}_{hospital_id}"
 
         # 输出目录
         output_dir = self.target_base_dir / group_code
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 转换5个任务
+        # 转换5个任务 (使用规范化的subject_id，V2数据使用level_X命名)
         conversion_stats = self.converter.convert_subject_all_tasks(
             source_dir=timestamp_dir,
             output_dir=output_dir,
-            subject_id=subject_id,
-            task_count=5
+            subject_id=v2_subject_id,
+            task_count=5,
+            data_version='v2'
         )
 
         if not conversion_stats["success"]:
-            raise RuntimeError(f"Failed to convert data for {subject_id}")
+            raise RuntimeError(f"Failed to convert data for {v2_subject_id}")
 
-        # 生成元数据
+        # 生成元数据 (使用规范化的subject_id)
         subject_metadata = {
-            "subject_id": subject_id,
+            "subject_id": v2_subject_id,  # 使用规范化的ID
             "patient_name": metadata.get("patient_name"),
             "hospital_id": hospital_id,
             "group": group_code,
@@ -250,7 +310,11 @@ class EyeTrackingDataImporter:
             "import_date": datetime.now().isoformat(),
             "tasks_available": conversion_stats["converted_tasks"],
             "has_mmse": False,
-            "mmse_scores": None
+            "mmse_scores": None,
+            "metadata": {
+                "original_id": original_id,  # 保存原始ID用于追溯
+                "timestamp": timestamp
+            }
         }
 
         # 保存元数据
@@ -258,7 +322,7 @@ class EyeTrackingDataImporter:
 
         return {
             "success": True,
-            "subject_id": subject_id,
+            "subject_id": v2_subject_id,  # 返回规范化的ID
             "metadata": subject_metadata,
             "conversion_stats": conversion_stats
         }

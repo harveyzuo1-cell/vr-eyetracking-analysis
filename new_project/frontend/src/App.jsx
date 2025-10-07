@@ -11,6 +11,7 @@ import Module00 from './pages/Module00';
 import Module01 from './pages/Module01/Module01';
 import Module02 from './pages/Module02/Module02';
 import ModuleEX from './pages/ModuleEX';
+import ModuleEX2 from './pages/ModuleEX2/ModuleEX2';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
             <Route path="module09" element={<div>模块9开发中...</div>} />
             <Route path="module10" element={<div>模块10开发中...</div>} />
             <Route path="moduleEX" element={<ModuleEX />} />
+            <Route path="moduleEX2" element={<ModuleEX2 />} />
           </Route>
         </Routes>
       </Router>

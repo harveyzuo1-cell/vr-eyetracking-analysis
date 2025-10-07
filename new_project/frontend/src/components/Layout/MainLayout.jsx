@@ -17,6 +17,7 @@ import {
   RadarChartOutlined,
   UploadOutlined,
   SettingOutlined,
+  ExportOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import LanguageSwitcher from '../LanguageSwitcher';
@@ -98,6 +99,11 @@ const MainLayout = () => {
       key: '/moduleEX',
       icon: <SettingOutlined />,
       label: 'ModuleEX: ROI配置',
+    },
+    {
+      key: '/moduleEX2',
+      icon: <ExportOutlined />,
+      label: 'ModuleEX2: 数据导出',
     },
   ];
 

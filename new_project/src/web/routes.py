@@ -76,6 +76,10 @@ def register_routes(app: Flask):
     from src.web.modules.module02_preprocessing.api import m02_bp
     app.register_blueprint(m02_bp)
 
+    # 注册ModuleEX2: 数据导出与固化
+    from src.web.modules.moduleEX2_data_export.api import ex2_bp
+    app.register_blueprint(ex2_bp)
+
     # 静态文件服务: 背景图片
     @app.route('/static/background_images/<version>/<filename>')
     def serve_background_image(version, filename):

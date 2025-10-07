@@ -124,7 +124,8 @@ class EyeTrackingDataConverter:
                                    source_dir: Path,
                                    output_dir: Path,
                                    subject_id: str,
-                                   task_count: int = 5) -> Dict:
+                                   task_count: int = 5,
+                                   data_version: str = 'v1') -> Dict:
         """
         转换受试者的所有任务数据
 
@@ -133,13 +134,14 @@ class EyeTrackingDataConverter:
             output_dir: 输出目录
             subject_id: 受试者ID
             task_count: 任务数量(默认5)
+            data_version: 数据版本 ('v1' 或 'v2')
 
         Returns:
             转换结果:
             {
                 'success': True,
                 'subject_id': 'control_000000',
-                'converted_tasks': ['q1', 'q2', 'q3', 'q4', 'q5'],
+                'converted_tasks': ['q1', 'q2', 'q3', 'q4', 'q5'] (v1) 或 ['level_1', 'level_2', ...] (v2),
                 'failed_tasks': [],
                 'statistics': {...}
             }
@@ -152,7 +154,11 @@ class EyeTrackingDataConverter:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         for i in range(1, task_count + 1):
-            task_id = f"q{i}"
+            # 根据数据版本使用不同的任务命名
+            if data_version == 'v2':
+                task_id = f"level_{i}"
+            else:
+                task_id = f"q{i}"
 
             # 尝试多种文件名格式
             possible_names = [f"level_{i}.txt", f"{i}.txt"]
