@@ -6,13 +6,28 @@ from flask import Blueprint, request, jsonify
 
 from src.utils.logger import setup_logger
 from .service import EventAnalysisService
+from .utils import handle_api_errors, validate_params
 
 logger = setup_logger(__name__)
 
 m04_bp = Blueprint('m04', __name__, url_prefix='/api/m04')
 
-# 初始化服务
-service = EventAnalysisService()
+# Service单例实例（懒加载）
+_service_instance = None
+
+
+def get_service() -> EventAnalysisService:
+    """
+    获取EventAnalysisService单例实例（懒加载模式）
+
+    Returns:
+        EventAnalysisService: Service实例
+    """
+    global _service_instance
+    if _service_instance is None:
+        _service_instance = EventAnalysisService()
+        logger.info("EventAnalysisService initialized (lazy loading)")
+    return _service_instance
 
 
 @m04_bp.route('/health', methods=['GET'])
@@ -22,6 +37,8 @@ def health_check():
 
 
 @m04_bp.route('/analyze/single', methods=['POST'])
+@validate_params('subject_id', 'group', 'task_id')
+@handle_api_errors
 def analyze_single():
     """
     分析单个受试者的单个任务
@@ -34,33 +51,22 @@ def analyze_single():
             "data_version": "v1"
         }
     """
-    try:
-        data = request.get_json()
+    data = request.get_json()
 
-        subject_id = data.get('subject_id')
-        group = data.get('group')
-        task_id = data.get('task_id')
-        data_version = data.get('data_version', 'v1')
+    subject_id = data.get('subject_id')
+    group = data.get('group')
+    task_id = data.get('task_id')
+    data_version = data.get('data_version', 'v1')
 
-        if not all([subject_id, group, task_id]):
-            return jsonify({
-                'success': False,
-                'error': '缺少必要参数: subject_id, group, task_id'
-            }), 400
+    service = get_service()
+    result = service.analyze_single_file(subject_id, group, task_id, data_version)
 
-        result = service.analyze_single_file(subject_id, group, task_id, data_version)
-
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"分析失败: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify(result)
 
 
 @m04_bp.route('/analyze/subject', methods=['POST'])
+@validate_params('subject_id', 'group')
+@handle_api_errors
 def analyze_subject():
     """
     分析单个受试者的所有任务
@@ -73,33 +79,21 @@ def analyze_subject():
             "tasks": ["q1", "q2", "q3", "q4", "q5"]  // 可选
         }
     """
-    try:
-        data = request.get_json()
+    data = request.get_json()
 
-        subject_id = data.get('subject_id')
-        group = data.get('group')
-        data_version = data.get('data_version', 'v1')
-        tasks = data.get('tasks')
+    subject_id = data.get('subject_id')
+    group = data.get('group')
+    data_version = data.get('data_version', 'v1')
+    tasks = data.get('tasks')
 
-        if not all([subject_id, group]):
-            return jsonify({
-                'success': False,
-                'error': '缺少必要参数: subject_id, group'
-            }), 400
+    service = get_service()
+    result = service.analyze_subject(subject_id, group, data_version, tasks)
 
-        result = service.analyze_subject(subject_id, group, data_version, tasks)
-
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"分析失败: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify(result)
 
 
 @m04_bp.route('/analyze/batch', methods=['POST'])
+@handle_api_errors
 def analyze_batch():
     """
     批量分析
@@ -113,36 +107,30 @@ def analyze_batch():
             "min_fixation_duration": 100  // 最小注视时长 (ms)
         }
     """
-    try:
-        data = request.get_json() or {}
+    data = request.get_json() or {}
 
-        group = data.get('group')
-        data_version = data.get('data_version', 'v1')
-        subject_ids = data.get('subject_ids')
+    group = data.get('group')
+    data_version = data.get('data_version', 'v1')
+    subject_ids = data.get('subject_ids')
 
-        # IVT参数
-        velocity_threshold = data.get('velocity_threshold', 40.0)
-        min_fixation_duration = data.get('min_fixation_duration', 100)
+    # IVT参数
+    velocity_threshold = data.get('velocity_threshold', 40.0)
+    min_fixation_duration = data.get('min_fixation_duration', 100)
 
-        result = service.analyze_batch(
-            group=group,
-            data_version=data_version,
-            subject_ids=subject_ids,
-            velocity_threshold=velocity_threshold,
-            min_fixation_duration=min_fixation_duration
-        )
+    service = get_service()
+    result = service.analyze_batch(
+        group=group,
+        data_version=data_version,
+        subject_ids=subject_ids,
+        velocity_threshold=velocity_threshold,
+        min_fixation_duration=min_fixation_duration
+    )
 
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"批量分析失败: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify(result)
 
 
 @m04_bp.route('/events', methods=['GET'])
+@handle_api_errors
 def get_events():
     """
     获取事件数据表格
@@ -153,25 +141,19 @@ def get_events():
         - task_id: 任务ID (可选)
         - event_type: 事件类型 fixation/saccade (可选)
     """
-    try:
-        subject_id = request.args.get('subject_id')
-        group = request.args.get('group')
-        task_id = request.args.get('task_id')
-        event_type = request.args.get('event_type')
+    subject_id = request.args.get('subject_id')
+    group = request.args.get('group')
+    task_id = request.args.get('task_id')
+    event_type = request.args.get('event_type')
 
-        result = service.get_events_table(subject_id, group, task_id, event_type)
+    service = get_service()
+    result = service.get_events_table(subject_id, group, task_id, event_type)
 
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"获取事件数据失败: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify(result)
 
 
 @m04_bp.route('/roi/statistics', methods=['GET'])
+@handle_api_errors
 def get_roi_stats():
     """
     获取ROI统计数据
@@ -180,22 +162,16 @@ def get_roi_stats():
         - group: 分组 (可选)
         - task_id: 任务ID (可选)
     """
-    try:
-        group = request.args.get('group')
-        task_id = request.args.get('task_id')
+    group = request.args.get('group')
+    task_id = request.args.get('task_id')
 
-        result = service.get_roi_statistics(group, task_id)
+    service = get_service()
+    result = service.get_roi_statistics(group, task_id)
 
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"获取ROI统计失败: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify(result)
 
 @m04_bp.route('/features', methods=['POST'])
+@handle_api_errors
 def get_features():
     """
     获取特征统计数据 (每个受试者-任务一行)
@@ -208,32 +184,26 @@ def get_features():
             "min_fixation_duration": 100
         }
     """
-    try:
-        data = request.get_json() or {}
+    data = request.get_json() or {}
 
-        group = data.get('group')
-        data_version = data.get('data_version', 'v1')
-        velocity_threshold = data.get('velocity_threshold', 40.0)
-        min_fixation_duration = data.get('min_fixation_duration', 100)
+    group = data.get('group')
+    data_version = data.get('data_version', 'v1')
+    velocity_threshold = data.get('velocity_threshold', 40.0)
+    min_fixation_duration = data.get('min_fixation_duration', 100)
 
-        result = service.get_feature_statistics(
-            group=group,
-            data_version=data_version,
-            velocity_threshold=velocity_threshold,
-            min_fixation_duration=min_fixation_duration
-        )
+    service = get_service()
+    result = service.get_feature_statistics(
+        group=group,
+        data_version=data_version,
+        velocity_threshold=velocity_threshold,
+        min_fixation_duration=min_fixation_duration
+    )
 
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"获取特征统计失败: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify(result)
 
 
 @m04_bp.route('/cache', methods=['GET'])
+@handle_api_errors
 def get_cache():
     """
     获取缓存的分析结果
@@ -246,25 +216,18 @@ def get_cache():
             "features_result": {...}
         }
     """
-    try:
-        cache_data = service.load_cache()
+    service = get_service()
+    cache_data = service.load_cache()
 
-        if cache_data:
-            return jsonify({
-                'success': True,
-                'timestamp': cache_data.get('timestamp'),
-                'batch_result': cache_data.get('batch_result'),
-                'features_result': cache_data.get('features_result')
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': '没有缓存数据'
-            })
-
-    except Exception as e:
-        logger.error(f"加载缓存失败: {e}")
+    if cache_data:
+        return jsonify({
+            'success': True,
+            'timestamp': cache_data.get('timestamp'),
+            'batch_result': cache_data.get('batch_result'),
+            'features_result': cache_data.get('features_result')
+        })
+    else:
         return jsonify({
             'success': False,
-            'error': str(e)
-        }), 500
+            'error': '没有缓存数据'
+        })
