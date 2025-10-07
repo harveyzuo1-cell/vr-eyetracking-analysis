@@ -237,7 +237,14 @@ class EventAnalyzer:
 
         Returns:
             ROI区域ID，不在任何ROI内则返回None
+
+        Note:
+            Y轴需要翻转以匹配前端Plotly坐标系和ROI配置定义
+            与Module01的ROIAnalyzer保持一致
         """
+        # Y轴翻转以匹配前端Plotly坐标系
+        y_flipped = 1 - y
+
         # 优先级: keywords > instructions > background
         for priority in ["keywords", "instructions", "background"]:
             if priority not in roi_regions:
@@ -252,7 +259,7 @@ class EventAnalyzer:
                 x_max = x_min + width
                 y_max = y_min + height
 
-                if x_min <= x <= x_max and y_min <= y <= y_max:
+                if x_min <= x <= x_max and y_min <= y_flipped <= y_max:
                     return region.get("id", region.get("name", "unknown"))
 
         return None

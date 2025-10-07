@@ -103,8 +103,20 @@ class ROIAnalyzer:
         # 确保有name和type字段
         if "name" not in normalized:
             normalized["name"] = normalized.get("id", "unknown")
-        if "type" not in normalized:
-            # 从ID推断类型
+
+        # 标准化type字段 (支持缩写格式)
+        if "type" in normalized:
+            # 如果type是缩写格式，转换为全称
+            type_value = normalized["type"]
+            if type_value == "KW":
+                normalized["type"] = "keyword"
+            elif type_value == "INST":
+                normalized["type"] = "instruction"
+            elif type_value == "BG":
+                normalized["type"] = "background"
+            # 已经是全称格式的保持不变
+        else:
+            # type字段不存在，从ID推断
             region_id = normalized.get("id", "")
             if region_id.startswith("KW"):
                 normalized["type"] = "keyword"

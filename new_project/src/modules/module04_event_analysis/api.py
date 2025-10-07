@@ -199,7 +199,7 @@ def get_roi_stats():
 def get_features():
     """
     获取特征统计数据 (每个受试者-任务一行)
-    
+
     Request Body:
         {
             "group": "control",  // 可选
@@ -210,23 +210,60 @@ def get_features():
     """
     try:
         data = request.get_json() or {}
-        
+
         group = data.get('group')
         data_version = data.get('data_version', 'v1')
         velocity_threshold = data.get('velocity_threshold', 40.0)
         min_fixation_duration = data.get('min_fixation_duration', 100)
-        
+
         result = service.get_feature_statistics(
             group=group,
             data_version=data_version,
             velocity_threshold=velocity_threshold,
             min_fixation_duration=min_fixation_duration
         )
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
         logger.error(f"获取特征统计失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@m04_bp.route('/cache', methods=['GET'])
+def get_cache():
+    """
+    获取缓存的分析结果
+
+    Returns:
+        {
+            "success": true,
+            "timestamp": "2025-10-07T12:00:00",
+            "batch_result": {...},
+            "features_result": {...}
+        }
+    """
+    try:
+        cache_data = service.load_cache()
+
+        if cache_data:
+            return jsonify({
+                'success': True,
+                'timestamp': cache_data.get('timestamp'),
+                'batch_result': cache_data.get('batch_result'),
+                'features_result': cache_data.get('features_result')
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': '没有缓存数据'
+            })
+
+    except Exception as e:
+        logger.error(f"加载缓存失败: {e}")
         return jsonify({
             'success': False,
             'error': str(e)

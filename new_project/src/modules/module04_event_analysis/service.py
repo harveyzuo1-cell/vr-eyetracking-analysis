@@ -26,11 +26,16 @@ class EventAnalysisService:
         self.results_dir = self.data_root / '04_features' / 'events'
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
+        # 缓存目录
+        self.cache_dir = self.data_root / '04_features' / 'cache'
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+
         # 默认分析器（使用默认IVT参数）
         self.analyzer = None
 
         # 初始化SubjectManager用于获取MMSE数据
-        self.subject_manager = SubjectManager()
+        subject_info_dir = self.data_root / 'subject_info'
+        self.subject_manager = SubjectManager(subject_info_dir)
 
         logger.info(f"事件分析服务初始化完成")
 
@@ -453,9 +458,11 @@ class EventAnalysisService:
             for subject_result in batch_result['results']:
                 subject_id = subject_result['subject_id']
                 grp = subject_result['group']
-                
+
                 # 获取该受试者的MMSE数据
-                subject_data = self.subject_manager.get_subject(subject_id)
+                # subject_id格式: legacy_1, 需要构建完整ID: control_legacy_1
+                full_subject_id = f"{grp}_{subject_id}"
+                subject_data = self.subject_manager.get_subject(full_subject_id)
                 mmse_total_score = None
                 if subject_data and 'mmse' in subject_data:
                     mmse_total_score = subject_data['mmse'].get('total_score')
@@ -464,33 +471,87 @@ class EventAnalysisService:
                 for task_result in subject_result['results']:
                     if not task_result.get('success', False):
                         continue
-                    
+
                     task_id = task_result['task_id']
                     fixations = task_result.get('fixations', [])
                     saccades = task_result.get('saccades', [])
-                    
-                    # 计算ROI占比
-                    roi_time = {'bg': 0, 'inst': 0, 'kw': 0}
+
+                    # 方法1: 使用ROIAnalyzer逐帧分析法计算ROI占比(与Module01一致)
+                    bg_ratio_frame = 0
+                    inst_ratio_frame = 0
+                    kw_ratio_frame = 0
+
+                    try:
+                        # 加载校准后的数据文件
+                        calibrated_file = self.processed_dir / grp / f"{full_subject_id}_{task_id}_calibrated.csv"
+                        logger.info(f"逐帧分析法: 检查文件 {calibrated_file}, exists={calibrated_file.exists()}")
+
+                        if calibrated_file.exists():
+                            import pandas as pd
+                            from src.web.modules.module01_data_visualization.roi_analyzer import ROIAnalyzer
+                            from src.services.roi_service import UnifiedROIService
+
+                            # 读取校准数据
+                            gaze_df = pd.read_csv(calibrated_file)
+                            logger.info(f"逐帧分析法: 读取校准数据 {len(gaze_df)} 行")
+
+                            # 获取ROI配置
+                            roi_service = UnifiedROIService()  # 使用默认单例
+                            roi_result = roi_service.get_roi_config(data_version, task_id)
+                            logger.info(f"逐帧分析法: ROI配置获取结果 success={roi_result.get('success') if roi_result else False}")
+
+                            if roi_result and roi_result.get('success') and 'data' in roi_result:
+                                roi_config = roi_result['data']
+                                if 'regions' in roi_config:
+                                    # 使用ROIAnalyzer计算统计
+                                    roi_analyzer = ROIAnalyzer(roi_config['regions'])
+                                    roi_stats = roi_analyzer.calculate_stats(gaze_df)
+                                    roi_summary = roi_analyzer.get_summary(roi_stats)
+                                    logger.info(f"逐帧分析法: ROI summary = {roi_summary}")
+
+                                    # 计算总时间和占比
+                                    total_roi_time = roi_summary['total_fixation_time']
+                                    if total_roi_time > 0:
+                                        bg_ratio_frame = (roi_summary['background_fixation_time'] / total_roi_time * 100)
+                                        inst_ratio_frame = (roi_summary['instructions_fixation_time'] / total_roi_time * 100)
+                                        kw_ratio_frame = (roi_summary['keywords_fixation_time'] / total_roi_time * 100)
+
+                                    logger.info(f"逐帧分析法ROI占比: {full_subject_id}_{task_id} - BG:{bg_ratio_frame:.2f}% INST:{inst_ratio_frame:.2f}% KW:{kw_ratio_frame:.2f}%")
+                        else:
+                            logger.warning(f"未找到校准数据文件: {calibrated_file}")
+                    except Exception as e:
+                        logger.error(f"逐帧分析法ROI占比计算失败: {full_subject_id}_{task_id} - {e}", exc_info=True)
+
+                    # 方法2: 使用IVT fixation质心匹配法计算ROI占比
+                    bg_ratio_ivt = 0
+                    inst_ratio_ivt = 0
+                    kw_ratio_ivt = 0
                     total_fixation_time = 0
-                    
+
                     for fix in fixations:
                         duration = fix['duration_ms']
                         total_fixation_time += duration
-                        
+
                         roi = fix.get('roi', '')
                         if roi:
                             # 根据ROI ID前缀判断类型
                             if roi.startswith('BG_'):
-                                roi_time['bg'] += duration
+                                bg_ratio_ivt += duration
                             elif roi.startswith('INST_'):
-                                roi_time['inst'] += duration
+                                inst_ratio_ivt += duration
                             elif roi.startswith('KW_'):
-                                roi_time['kw'] += duration
-                    
-                    # 计算占比
-                    bg_ratio = (roi_time['bg'] / total_fixation_time * 100) if total_fixation_time > 0 else 0
-                    inst_ratio = (roi_time['inst'] / total_fixation_time * 100) if total_fixation_time > 0 else 0
-                    kw_ratio = (roi_time['kw'] / total_fixation_time * 100) if total_fixation_time > 0 else 0
+                                kw_ratio_ivt += duration
+                        else:
+                            # 没有ROI标注,计入背景
+                            bg_ratio_ivt += duration
+
+                    # 计算IVT方法的占比
+                    if total_fixation_time > 0:
+                        bg_ratio_ivt = (bg_ratio_ivt / total_fixation_time * 100)
+                        inst_ratio_ivt = (inst_ratio_ivt / total_fixation_time * 100)
+                        kw_ratio_ivt = (kw_ratio_ivt / total_fixation_time * 100)
+
+                    logger.debug(f"IVT质心法ROI占比: {full_subject_id}_{task_id} - BG:{bg_ratio_ivt:.2f}% INST:{inst_ratio_ivt:.2f}% KW:{kw_ratio_ivt:.2f}%")
                     
                     # 计算平均Fixation时长
                     avg_fixation_duration = total_fixation_time / len(fixations) if fixations else 0
@@ -503,23 +564,66 @@ class EventAnalysisService:
                     total_saccade_time = sum([sacc['duration_ms'] for sacc in saccades])
                     task_total_time = total_fixation_time + total_saccade_time
                     
-                    # 获取对应任务的MMSE分项分数（如果有的话）
+                    # 获取对应任务的MMSE分项分数
                     mmse_task_score = None
                     if subject_data and 'mmse' in subject_data:
-                        # 尝试根据task_id找到对应的MMSE分项
-                        # Q1-Q5可能对应MMSE的不同维度，这里简化处理
-                        sub_scores = subject_data['mmse'].get('sub_scores', {})
-                        # 这里需要根据实际的MMSE结构调整映射关系
-                        # 暂时不设置task_score，因为需要明确task_id和MMSE分项的对应关系
-                        pass
+                        mmse = subject_data['mmse']
+                        # 根据task_id计算对应的MMSE分项总分
+                        # q1: 时间定向 (year, season, month, weekday)
+                        # q2: 地点定向 (province, street, building, floor)
+                        # q3: 即时记忆 (immediate)
+                        # q4: 计算能力 (100_7, 93_7, 86_7, 79_7, 72_7)
+                        # q5: 延迟回忆 (word1, word2, word3)
+
+                        if task_id == 'q1':
+                            # 时间定向总分
+                            mmse_task_score = sum([
+                                mmse.get('q1_year', 0),
+                                mmse.get('q1_season', 0),
+                                mmse.get('q1_month', 0),
+                                mmse.get('q1_weekday', 0)
+                            ])
+                        elif task_id == 'q2':
+                            # 地点定向总分
+                            mmse_task_score = sum([
+                                mmse.get('q2_province', 0),
+                                mmse.get('q2_street', 0),
+                                mmse.get('q2_building', 0),
+                                mmse.get('q2_floor', 0)
+                            ])
+                        elif task_id == 'q3':
+                            # 即时记忆总分
+                            mmse_task_score = mmse.get('q3_immediate', 0)
+                        elif task_id == 'q4':
+                            # 计算能力总分
+                            mmse_task_score = sum([
+                                mmse.get('q4_100_7', 0),
+                                mmse.get('q4_93_7', 0),
+                                mmse.get('q4_86_7', 0),
+                                mmse.get('q4_79_7', 0),
+                                mmse.get('q4_72_7', 0)
+                            ])
+                        elif task_id == 'q5':
+                            # 延迟回忆总分
+                            mmse_task_score = sum([
+                                mmse.get('q5_word1', 0),
+                                mmse.get('q5_word2', 0),
+                                mmse.get('q5_word3', 0)
+                            ])
                     
                     features_list.append({
-                        'subject_id': subject_id,
+                        'subject_id': full_subject_id,  # 使用完整ID (含组别前缀)
                         'group': grp,
                         'task_id': task_id,
-                        'bg_ratio': round(bg_ratio, 2),
-                        'inst_ratio': round(inst_ratio, 2),
-                        'kw_ratio': round(kw_ratio, 2),
+                        # 逐帧分析法ROI占比 (与Module01一致)
+                        'bg_ratio_frame': round(bg_ratio_frame, 2),
+                        'inst_ratio_frame': round(inst_ratio_frame, 2),
+                        'kw_ratio_frame': round(kw_ratio_frame, 2),
+                        # IVT质心匹配法ROI占比
+                        'bg_ratio_ivt': round(bg_ratio_ivt, 2),
+                        'inst_ratio_ivt': round(inst_ratio_ivt, 2),
+                        'kw_ratio_ivt': round(kw_ratio_ivt, 2),
+                        # 其他特征
                         'total_fixation_time': round(total_fixation_time, 2),
                         'total_fixations': len(fixations),
                         'avg_fixation_duration': round(avg_fixation_duration, 2),
@@ -530,15 +634,70 @@ class EventAnalysisService:
                         'mmse_task_score': mmse_task_score
                     })
             
-            return {
+            features_result = {
                 'success': True,
                 'total_records': len(features_list),
                 'features': features_list
             }
-            
+
+            # 保存缓存
+            self.save_cache(batch_result, features_result)
+
+            return features_result
+
         except Exception as e:
             logger.error(f"特征统计失败: {e}")
             return {
                 'success': False,
                 'error': str(e)
             }
+
+    def save_cache(self, batch_result: Dict, features_result: Dict):
+        """
+        保存分析结果到缓存
+
+        Args:
+            batch_result: analyze_batch的结果
+            features_result: get_feature_statistics的结果
+        """
+        try:
+            from datetime import datetime
+            cache_file = self.cache_dir / 'latest_analysis.json'
+
+            cache_data = {
+                'timestamp': datetime.now().isoformat(),
+                'batch_result': batch_result,
+                'features_result': features_result
+            }
+
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, ensure_ascii=False, indent=2)
+
+            logger.info(f"缓存保存成功: {cache_file}")
+            return True
+        except Exception as e:
+            logger.error(f"缓存保存失败: {e}")
+            return False
+
+    def load_cache(self) -> Optional[Dict]:
+        """
+        加载最近一次的分析结果缓存
+
+        Returns:
+            缓存数据字典或None
+        """
+        try:
+            cache_file = self.cache_dir / 'latest_analysis.json'
+
+            if not cache_file.exists():
+                logger.info("没有找到缓存文件")
+                return None
+
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+
+            logger.info(f"缓存加载成功: {cache_data.get('timestamp')}")
+            return cache_data
+        except Exception as e:
+            logger.error(f"缓存加载失败: {e}")
+            return None
