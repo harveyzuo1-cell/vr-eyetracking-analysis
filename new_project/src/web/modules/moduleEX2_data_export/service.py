@@ -24,7 +24,10 @@ class DataExportService:
     def __init__(self):
         """初始化数据导出服务"""
         self.data_root = Path(Config.DATA_ROOT)
-        self.export_dir = self.data_root / 'exports'
+
+        # 按照6阶段数据流架构，导出文件存放在第6阶段: 结果输出
+        # data/06_results/exports/ (符合架构设计)
+        self.export_dir = self.data_root / '06_results' / 'exports'
         self.export_dir.mkdir(parents=True, exist_ok=True)
 
         # 数据源目录
