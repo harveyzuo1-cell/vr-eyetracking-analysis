@@ -80,6 +80,10 @@ def register_routes(app: Flask):
     from src.web.modules.moduleEX2_data_export.api import ex2_bp
     app.register_blueprint(ex2_bp)
 
+    # 注册Module04: 眼动事件分析
+    from src.modules.module04_event_analysis.api import m04_bp
+    app.register_blueprint(m04_bp)
+
     # 静态文件服务: 背景图片
     @app.route('/static/background_images/<version>/<filename>')
     def serve_background_image(version, filename):
