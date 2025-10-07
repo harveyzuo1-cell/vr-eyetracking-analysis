@@ -1,15 +1,10 @@
 /**
- * Module04: 眼动事件分析模块
- *
- * 功能:
- * - IVT算法事件检测 (注视/扫视)
- * - 事件数据表格展示
- * - ROI统计分析
+ * Module04: 眼动事件分析模块 (优化版 - 批量分析)
  */
 
 import React, { useState } from 'react';
-import { Card, Tabs, Form, Select, Button, Table, message, Statistic, Row, Col } from 'antd';
-import { EyeOutlined, TableOutlined, BarChartOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { Card, Tabs, Form, Select, Button, Table, message, Statistic, Row, Col, InputNumber, Alert } from 'antd';
+import { EyeOutlined, PlayCircleOutlined, SettingOutlined, TableOutlined, BarChartOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { TabPane } = Tabs;
@@ -17,24 +12,48 @@ const { Option } = Select;
 
 const Module04 = () => {
   const [loading, setLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
   const [eventsData, setEventsData] = useState([]);
-  const [roiStats, setRoiStats] = useState([]);
-  const [summary, setSummary] = useState(null);
+  const [statistics, setStatistics] = useState(null);
 
-  // 分析单个受试者
-  const handleAnalyzeSubject = async (values) => {
+  // 批量分析
+  const handleBatchAnalysis = async (values) => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/m04/analyze/subject', values);
+      const payload = {
+        data_version: values.data_version,
+        group: values.group,
+        ivt_params: {
+          velocity_threshold: values.velocity_threshold || 40.0,
+          min_fixation_duration: values.min_fixation_duration || 100
+        }
+      };
+
+      message.info('开始批量分析，请稍候...');
+      const response = await axios.post('/api/m04/analyze/batch', payload);
 
       if (response.data.success) {
-        message.success(`分析完成! 成功分析 ${response.data.successful_tasks} 个任务`);
-        setSummary(response.data);
+        setAnalysisResult(response.data);
 
-        // 刷新事件表格
-        loadEventsTable(values.subject_id, values.group);
+        // 计算统计信息
+        const totalFix = response.data.results?.reduce((sum, r) =>
+          sum + r.results?.reduce((s, t) => s + (t.summary?.total_fixations || 0), 0), 0);
+        const totalSacc = response.data.results?.reduce((sum, r) =>
+          sum + r.results?.reduce((s, t) => s + (t.summary?.total_saccades || 0), 0), 0);
+
+        setStatistics({
+          totalSubjects: response.data.total_subjects,
+          totalFixations: totalFix,
+          totalSaccades: totalSacc,
+          totalEvents: totalFix + totalSacc
+        });
+
+        message.success(`分析完成！处理了 ${response.data.total_subjects} 个受试者`);
+
+        // 加载事件表格
+        loadEventsFromResult(response.data);
       } else {
-        message.error(response.data.error || '分析失败');
+        message.error(response.data.error || '批量分析失败');
       }
     } catch (error) {
       message.error('分析请求失败: ' + error.message);
@@ -43,166 +62,188 @@ const Module04 = () => {
     }
   };
 
-  // 加载事件数据表格
-  const loadEventsTable = async (subjectId, group) => {
-    try {
-      const params = {};
-      if (subjectId) params.subject_id = subjectId;
-      if (group) params.group = group;
+  // 从分析结果加载事件数据
+  const loadEventsFromResult = (result) => {
+    const events = [];
+    result.results?.forEach(subjectResult => {
+      const sid = subjectResult.subject_id;
+      const grp = subjectResult.group;
 
-      const response = await axios.get('/api/m04/events', { params });
+      subjectResult.results?.forEach(taskResult => {
+        if (!taskResult.success) return;
+        const tid = taskResult.task_id;
 
-      if (response.data.success) {
-        setEventsData(response.data.events);
-      }
-    } catch (error) {
-      message.error('加载事件数据失败: ' + error.message);
-    }
+        // Fixations
+        taskResult.fixations?.forEach((fix, idx) => {
+          events.push({
+            key: `${sid}_${tid}_fix_${idx}`,
+            subject_id: sid,
+            group: grp,
+            task_id: tid,
+            event_type: 'fixation',
+            duration_ms: fix.duration_ms,
+            centroid_x: fix.centroid_x,
+            centroid_y: fix.centroid_y,
+            dispersion: fix.dispersion,
+            roi: fix.roi
+          });
+        });
+
+        // Saccades
+        taskResult.saccades?.forEach((sacc, idx) => {
+          events.push({
+            key: `${sid}_${tid}_sacc_${idx}`,
+            subject_id: sid,
+            group: grp,
+            task_id: tid,
+            event_type: 'saccade',
+            duration_ms: sacc.duration_ms,
+            amplitude: sacc.amplitude,
+            max_velocity: sacc.max_velocity,
+            mean_velocity: sacc.mean_velocity
+          });
+        });
+      });
+    });
+
+    setEventsData(events);
   };
 
-  // 加载ROI统计
-  const loadROIStats = async (group, taskId) => {
-    try {
-      const params = {};
-      if (group) params.group = group;
-      if (taskId) params.task_id = taskId;
-
-      const response = await axios.get('/api/m04/roi/statistics', { params });
-
-      if (response.data.success) {
-        setRoiStats(response.data.roi_statistics);
-      }
-    } catch (error) {
-      message.error('加载ROI统计失败: ' + error.message);
-    }
-  };
-
-  // 事件表格列定义
-  const eventsColumns = [
-    { title: '受试者ID', dataIndex: 'subject_id', key: 'subject_id', width: 120 },
-    { title: '分组', dataIndex: 'group', key: 'group', width: 80 },
+  // 事件表格列
+  const eventColumns = [
+    { title: '受试者', dataIndex: 'subject_id', key: 'subject_id', width: 120, fixed: 'left' },
+    { title: '组别', dataIndex: 'group', key: 'group', width: 80 },
     { title: '任务', dataIndex: 'task_id', key: 'task_id', width: 80 },
     {
       title: '事件类型',
       dataIndex: 'event_type',
       key: 'event_type',
       width: 100,
-      render: (type) => type === 'fixation' ? '注视' : '扫视'
+      render: (type) => type === 'fixation' ? '注视' : '扫视',
+      filters: [
+        { text: '注视', value: 'fixation' },
+        { text: '扫视', value: 'saccade' }
+      ],
+      onFilter: (value, record) => record.event_type === value
     },
     {
       title: '时长(ms)',
       dataIndex: 'duration_ms',
       key: 'duration_ms',
       width: 100,
-      render: (val) => val?.toFixed(2)
+      render: (val) => val?.toFixed(2),
+      sorter: (a, b) => a.duration_ms - b.duration_ms
     },
-    {
-      title: '中心X',
-      dataIndex: 'centroid_x',
-      key: 'centroid_x',
-      width: 100,
-      render: (val) => val?.toFixed(3)
-    },
-    {
-      title: '中心Y',
-      dataIndex: 'centroid_y',
-      key: 'centroid_y',
-      width: 100,
-      render: (val) => val?.toFixed(3)
-    },
+    { title: 'X坐标', dataIndex: 'centroid_x', key: 'centroid_x', width: 90, render: (v) => v?.toFixed(3) },
+    { title: 'Y坐标', dataIndex: 'centroid_y', key: 'centroid_y', width: 90, render: (v) => v?.toFixed(3) },
     { title: 'ROI区域', dataIndex: 'roi', key: 'roi', width: 150 },
-  ];
-
-  // ROI统计表格列定义
-  const roiStatsColumns = [
-    { title: 'ROI区域', dataIndex: 'roi', key: 'roi' },
-    { title: '注视次数', dataIndex: 'fixation_count', key: 'fixation_count' },
-    {
-      title: '总时长(ms)',
-      dataIndex: 'total_duration_ms',
-      key: 'total_duration_ms',
-      render: (val) => val?.toFixed(2)
-    },
-    {
-      title: '平均时长(ms)',
-      dataIndex: 'avg_duration_ms',
-      key: 'avg_duration_ms',
-      render: (val) => val?.toFixed(2)
-    },
-    { title: '受试者数', dataIndex: 'unique_subjects', key: 'unique_subjects' },
-    { title: '任务数', dataIndex: 'unique_tasks', key: 'unique_tasks' },
   ];
 
   return (
     <div style={{ padding: '24px' }}>
-      <Card title={<><EyeOutlined /> Module04: 眼动事件分析</>}>
+      <Card title={<><EyeOutlined /> Module04: 眼动事件分析 (IVT算法)</>}>
         <Tabs defaultActiveKey="1">
-          {/* Tab 1: 事件分析 */}
-          <TabPane tab={<><PlayCircleOutlined /> 事件分析</>} key="1">
-            <Card title="分析配置" style={{ marginBottom: 16 }}>
+          {/* Tab 1: 批量分析 */}
+          <TabPane tab={<><PlayCircleOutlined /> 批量分析</>} key="1">
+            <Alert
+              message="批量分析说明"
+              description={
+                <div>
+                  <p>• 选择数据版本（V1/V2）自动分析所有受试者数据</p>
+                  <p>• 可配置IVT算法参数：速度阈值和最小注视时长</p>
+                  <p>• V2数据接口已保留，待数据整理完成后启用</p>
+                </div>
+              }
+              type="info"
+              style={{ marginBottom: 16 }}
+            />
+
+            <Card title="分析配置" size="small" style={{ marginBottom: 16 }}>
               <Form
-                layout="inline"
-                onFinish={handleAnalyzeSubject}
+                layout="horizontal"
+                labelCol={{ span: 6 }}
+                wrapperCol={{ span: 18 }}
+                onFinish={handleBatchAnalysis}
+                initialValues={{
+                  data_version: 'v1',
+                  velocity_threshold: 40.0,
+                  min_fixation_duration: 100
+                }}
               >
-                <Form.Item
-                  label="受试者ID"
-                  name="subject_id"
-                  rules={[{ required: true, message: '请输入受试者ID' }]}
-                >
-                  <input placeholder="例如: legacy_1" style={{ width: 200 }} />
-                </Form.Item>
+                <Row gutter={24}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="数据版本"
+                      name="data_version"
+                      rules={[{ required: true, message: '请选择数据版本' }]}
+                    >
+                      <Select>
+                        <Option value="v1">V1 (可用)</Option>
+                        <Option value="v2" disabled>V2 (待整理)</Option>
+                      </Select>
+                    </Form.Item>
 
-                <Form.Item
-                  label="分组"
-                  name="group"
-                  rules={[{ required: true, message: '请选择分组' }]}
-                >
-                  <Select style={{ width: 120 }}>
-                    <Option value="control">Control</Option>
-                    <Option value="mci">MCI</Option>
-                    <Option value="ad">AD</Option>
-                  </Select>
-                </Form.Item>
+                    <Form.Item
+                      label="分组筛选"
+                      name="group"
+                      extra="不选择则分析全部组别"
+                    >
+                      <Select allowClear placeholder="全部组别">
+                        <Option value="control">Control</Option>
+                        <Option value="mci">MCI</Option>
+                        <Option value="ad">AD</Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
 
-                <Form.Item
-                  label="数据版本"
-                  name="data_version"
-                  initialValue="v1"
-                >
-                  <Select style={{ width: 100 }}>
-                    <Option value="v1">V1</Option>
-                    <Option value="v2">V2</Option>
-                  </Select>
-                </Form.Item>
+                  <Col span={12}>
+                    <Form.Item
+                      label={<><SettingOutlined /> 速度阈值</>}
+                      name="velocity_threshold"
+                      extra="deg/s，用于区分注视和扫视"
+                    >
+                      <InputNumber min={10} max={100} step={5} style={{ width: '100%' }} />
+                    </Form.Item>
 
-                <Form.Item>
-                  <Button type="primary" htmlType="submit" loading={loading} icon={<PlayCircleOutlined />}>
-                    开始分析
+                    <Form.Item
+                      label={<><SettingOutlined /> 最小注视时长</>}
+                      name="min_fixation_duration"
+                      extra="ms，短于此时长的注视被归类为扫视"
+                    >
+                      <InputNumber min={50} max={500} step={50} style={{ width: '100%' }} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item wrapperCol={{ span: 24 }}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    icon={<PlayCircleOutlined />}
+                    loading={loading}
+                    size="large"
+                    block
+                  >
+                    {loading ? '分析中...' : '开始批量分析'}
                   </Button>
                 </Form.Item>
               </Form>
             </Card>
 
-            {summary && (
-              <Card title="分析摘要" style={{ marginBottom: 16 }}>
+            {statistics && (
+              <Card title="分析统计" size="small">
                 <Row gutter={16}>
                   <Col span={6}>
-                    <Statistic title="分析任务数" value={summary.analyzed_tasks} />
+                    <Statistic title="受试者数" value={statistics.totalSubjects} />
                   </Col>
                   <Col span={6}>
-                    <Statistic title="成功任务数" value={summary.successful_tasks} />
+                    <Statistic title="总事件数" value={statistics.totalEvents} />
                   </Col>
                   <Col span={6}>
-                    <Statistic
-                      title="总注视事件"
-                      value={summary.results?.reduce((sum, r) => sum + (r.summary?.total_fixations || 0), 0)}
-                    />
+                    <Statistic title="注视事件" value={statistics.totalFixations} valueStyle={{ color: '#3f8600' }} />
                   </Col>
                   <Col span={6}>
-                    <Statistic
-                      title="总扫视事件"
-                      value={summary.results?.reduce((sum, r) => sum + (r.summary?.total_saccades || 0), 0)}
-                    />
+                    <Statistic title="扫视事件" value={statistics.totalSaccades} valueStyle={{ color: '#cf1322' }} />
                   </Col>
                 </Row>
               </Card>
@@ -210,44 +251,15 @@ const Module04 = () => {
           </TabPane>
 
           {/* Tab 2: 事件数据表格 */}
-          <TabPane tab={<><TableOutlined /> 事件数据</>} key="2">
-            <Card
-              title="事件数据表格"
-              extra={
-                <Button onClick={() => loadEventsTable()}>
-                  刷新全部数据
-                </Button>
-              }
-            >
-              <Table
-                dataSource={eventsData}
-                columns={eventsColumns}
-                rowKey={(record, index) => `${record.subject_id}_${record.task_id}_${index}`}
-                pagination={{ pageSize: 50 }}
-                size="small"
-                scroll={{ x: 1000 }}
-              />
-            </Card>
-          </TabPane>
-
-          {/* Tab 3: ROI统计 */}
-          <TabPane tab={<><BarChartOutlined /> ROI统计</>} key="3">
-            <Card
-              title="ROI停留统计"
-              extra={
-                <Button onClick={() => loadROIStats()}>
-                  刷新统计
-                </Button>
-              }
-            >
-              <Table
-                dataSource={roiStats}
-                columns={roiStatsColumns}
-                rowKey="roi"
-                pagination={{ pageSize: 20 }}
-                size="small"
-              />
-            </Card>
+          <TabPane tab={<><TableOutlined /> 事件数据 ({eventsData.length})</>} key="2">
+            <Table
+              dataSource={eventsData}
+              columns={eventColumns}
+              pagination={{ pageSize: 100, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
+              size="small"
+              scroll={{ x: 1000, y: 600 }}
+              loading={loading}
+            />
           </TabPane>
         </Tabs>
       </Card>
