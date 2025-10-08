@@ -8,6 +8,8 @@ import base64
 from src.utils.logger import setup_logger
 from .service import RQAAnalysisService
 from .utils import handle_api_errors, validate_params, monitor_performance, validate_rqa_params
+from .task_executor import RQATaskExecutor
+from datetime import datetime
 
 logger = setup_logger(__name__)
 
@@ -15,6 +17,9 @@ m05_bp = Blueprint('m05', __name__, url_prefix='/api/m05')
 
 # Service单例实例（懒加载）
 _service_instance = None
+
+# TaskExecutor单例实例（懒加载）
+_task_executor = None
 
 
 def get_service() -> RQAAnalysisService:
@@ -29,6 +34,20 @@ def get_service() -> RQAAnalysisService:
         _service_instance = RQAAnalysisService()
         logger.info("RQAAnalysisService initialized (lazy loading)")
     return _service_instance
+
+
+def get_task_executor() -> RQATaskExecutor:
+    """
+    获取RQATaskExecutor单例实例（懒加载模式）
+
+    Returns:
+        RQATaskExecutor: TaskExecutor实例
+    """
+    global _task_executor
+    if _task_executor is None:
+        _task_executor = RQATaskExecutor()
+        logger.info("RQATaskExecutor initialized (lazy loading)")
+    return _task_executor
 
 
 @m05_bp.route('/health', methods=['GET'])
@@ -147,10 +166,28 @@ def analyze_single():
     if not step2_result['success']:
         return jsonify(step2_result), 500
 
+    # Step 3: 特征增强
+    step3_result = service.step3_feature_enrichment(params)
+    if not step3_result['success']:
+        logger.warning(f"Step 3失败: {step3_result.get('error')}")
+
+    # Step 4: 统计分析
+    step4_result = service.step4_statistical_analysis(params)
+    if not step4_result['success']:
+        logger.warning(f"Step 4失败: {step4_result.get('error')}")
+
+    # Step 5: 可视化
+    step5_result = service.step5_visualization(params)
+    if not step5_result['success']:
+        logger.warning(f"Step 5失败: {step5_result.get('error')}")
+
     return jsonify({
         'success': True,
         'step1_result': step1_result,
-        'step2_result': step2_result
+        'step2_result': step2_result,
+        'step3_result': step3_result,
+        'step4_result': step4_result,
+        'step5_result': step5_result
     })
 
 
@@ -222,10 +259,28 @@ def analyze_batch():
                 failed += 1
                 continue
 
+            # Step 3: 特征增强
+            step3_result = service.step3_feature_enrichment(params)
+            if not step3_result['success']:
+                logger.warning(f"Step 3失败: {step3_result.get('error')}")
+
+            # Step 4: 统计分析
+            step4_result = service.step4_statistical_analysis(params)
+            if not step4_result['success']:
+                logger.warning(f"Step 4失败: {step4_result.get('error')}")
+
+            # Step 5: 可视化
+            step5_result = service.step5_visualization(params)
+            if not step5_result['success']:
+                logger.warning(f"Step 5失败: {step5_result.get('error')}")
+
             results.append({
                 'params': params,
                 'step1_result': step1_result,
-                'step2_result': step2_result
+                'step2_result': step2_result,
+                'step3_result': step3_result,
+                'step4_result': step4_result,
+                'step5_result': step5_result
             })
             completed += 1
 
@@ -397,4 +452,154 @@ def generate_recurrence_plot():
             'embedded_length': embedded.shape[0],
             'embedding_dim': embedded.shape[1]
         }
+    })
+
+
+# ========== 异步任务API ==========
+
+@m05_bp.route('/tasks/submit', methods=['POST'])
+@validate_params('param_combinations')
+@handle_api_errors
+def submit_async_task():
+    """
+    提交异步批量RQA任务
+
+    Request Body:
+    {
+        "param_combinations": [
+            {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
+            {"m": 2, "tau": 1, "eps": 0.051, "lmin": 2},
+            ...
+        ],
+        "groups": ["control", "mci", "ad"]
+    }
+
+    Response:
+    {
+        "success": true,
+        "task_id": "task_20250610_143025_abc123",
+        "total_files": 933,
+        "message": "任务已提交到后台执行"
+    }
+    """
+    data = request.get_json()
+    param_combinations = data['param_combinations']
+    groups = data.get('groups', ['control', 'mci', 'ad'])
+
+    # 验证参数
+    for params in param_combinations:
+        valid, error_msg = validate_rqa_params(params)
+        if not valid:
+            return jsonify({
+                'success': False,
+                'error': f'参数无效: {params} - {error_msg}'
+            }), 400
+
+    # 生成任务ID
+    task_id = f"task_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    # 获取executor和service
+    executor = get_task_executor()
+    service = get_service()
+
+    # 提交任务
+    executor.submit_batch_task(
+        task_id=task_id,
+        service=service,
+        param_combinations=param_combinations,
+        groups=groups
+    )
+
+    # 获取初始状态
+    status = executor.get_task_status(task_id)
+
+    return jsonify({
+        'success': True,
+        'task_id': task_id,
+        'total_files': status['total_files'],
+        'message': '任务已提交到后台执行'
+    })
+
+
+@m05_bp.route('/tasks/status/<task_id>', methods=['GET'])
+@handle_api_errors
+def get_task_status(task_id):
+    """
+    获取任务状态
+
+    Response:
+    {
+        "success": true,
+        "task": {
+            "task_id": "task_20250610_143025",
+            "status": "running",
+            "progress": 45.2,
+            "processed_files": 421,
+            "total_files": 933,
+            "current_step": 1,
+            "eta_seconds": 120,
+            ...
+        }
+    }
+    """
+    executor = get_task_executor()
+    status = executor.get_task_status(task_id)
+
+    if status is None:
+        return jsonify({
+            'success': False,
+            'error': f'任务不存在: {task_id}'
+        }), 404
+
+    return jsonify({
+        'success': True,
+        'task': status
+    })
+
+
+@m05_bp.route('/tasks/list', methods=['GET'])
+@handle_api_errors
+def list_tasks():
+    """
+    列出所有任务
+
+    Response:
+    {
+        "success": true,
+        "tasks": [...]
+    }
+    """
+    executor = get_task_executor()
+    tasks = executor.get_all_tasks()
+
+    return jsonify({
+        'success': True,
+        'tasks': tasks
+    })
+
+
+@m05_bp.route('/tasks/cancel/<task_id>', methods=['POST'])
+@handle_api_errors
+def cancel_task(task_id):
+    """
+    取消任务
+
+    Response:
+    {
+        "success": true,
+        "message": "任务已取消"
+    }
+    """
+    executor = get_task_executor()
+    cancelled = executor.cancel_task(task_id)
+
+    if not cancelled:
+        return jsonify({
+            'success': False,
+            'error': f'无法取消任务: {task_id}'
+        }), 400
+
+    return jsonify({
+        'success': True,
+        'message': '任务已取消'
     })

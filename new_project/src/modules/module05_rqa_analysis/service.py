@@ -450,3 +450,373 @@ class RQAAnalysisService:
         history.sort(key=lambda x: x.get('last_updated', ''), reverse=True)
 
         return history
+
+    def step3_feature_enrichment(self, params: Dict) -> Dict:
+        """
+        Step 3: 特征增强
+
+        整合Module04事件分析数据和受试者MMSE信息
+
+        Args:
+            params: RQA参数
+
+        Returns:
+            {
+                'success': True,
+                'features_added': int,
+                'output_file': str
+            }
+        """
+        try:
+            logger.info(f"开始Step 3: 特征增强, 参数={params}")
+
+            step2_dir = self.get_step_directory(params, 'step2_data_merging')
+            merged_file = step2_dir / 'merged_data.csv'
+
+            if not merged_file.exists():
+                raise ValueError(f"Step 2输出文件不存在: {merged_file}")
+
+            merged = pd.read_csv(merged_file)
+
+            # 1. 尝试加载Module04事件特征（如果有缓存）
+            try:
+                m04_cache = self.data_root / '04_features' / 'cache' / 'latest_analysis.json'
+                if m04_cache.exists():
+                    with open(m04_cache, 'r', encoding='utf-8') as f:
+                        m04_data = json.load(f)
+
+                    if 'features_result' in m04_data and m04_data['features_result'].get('success'):
+                        m04_features = pd.DataFrame(m04_data['features_result']['features'])
+
+                        # 合并事件特征
+                        # Module04的key是subject_id_task_id，需要创建ID列匹配
+                        if 'subject_id' in m04_features.columns and 'task_id' in m04_features.columns:
+                            m04_features['ID'] = m04_features['subject_id'] + '_' + m04_features['task_id']
+
+                            # 选择要合并的列
+                            event_cols = ['ID', 'fixation_count', 'saccade_count',
+                                        'avg_fixation_duration', 'avg_saccade_amplitude']
+                            available_cols = [col for col in event_cols if col in m04_features.columns]
+
+                            if len(available_cols) > 1:  # 至少有ID和一个特征列
+                                merged = merged.merge(
+                                    m04_features[available_cols],
+                                    on='ID',
+                                    how='left'
+                                )
+                                logger.info(f"成功整合Module04事件特征: {len(available_cols)-1} 列")
+            except Exception as e:
+                logger.warning(f"加载Module04特征失败，跳过: {e}")
+
+            # 2. 加载MMSE数据
+            try:
+                # 使用SubjectManager加载受试者信息
+                subjects_data = []
+
+                for _, row in merged.iterrows():
+                    subject_id = row['subject_id']
+
+                    # 从SubjectManager获取受试者信息
+                    subject_info = self.subject_manager.get_subject(subject_id)
+
+                    if subject_info:
+                        subjects_data.append({
+                            'subject_id': subject_id,
+                            'age': subject_info.get('age'),
+                            'education_level': subject_info.get('education_level'),
+                            'mmse_total_score': subject_info.get('mmse_total_score'),
+                            'mmse_orientation': subject_info.get('mmse_orientation'),
+                            'mmse_memory': subject_info.get('mmse_memory'),
+                            'mmse_attention': subject_info.get('mmse_attention'),
+                            'mmse_language': subject_info.get('mmse_language'),
+                            'mmse_visuospatial': subject_info.get('mmse_visuospatial')
+                        })
+
+                if subjects_data:
+                    subjects_df = pd.DataFrame(subjects_data)
+                    merged = merged.merge(subjects_df, on='subject_id', how='left')
+                    logger.info(f"成功整合MMSE数据: {len(subjects_df)} 个受试者")
+
+            except Exception as e:
+                logger.warning(f"加载MMSE数据失败，跳过: {e}")
+
+            # 3. 计算衍生特征
+            # RQA复杂度指标
+            merged['rqa_complexity_1d'] = merged['DET-1D-x'] * merged['ENT-1D-x']
+            merged['rqa_complexity_2d'] = merged['DET-2D-xy'] * merged['ENT-2D-xy']
+
+            # RQA差异指标（1D vs 2D）
+            merged['rqa_diff_rr'] = merged['RR-2D-xy'] - merged['RR-1D-x']
+            merged['rqa_diff_det'] = merged['DET-2D-xy'] - merged['DET-1D-x']
+            merged['rqa_diff_ent'] = merged['ENT-2D-xy'] - merged['ENT-1D-x']
+
+            # 保存增强后的特征
+            step3_dir = self.get_step_directory(params, 'step3_feature_enrichment')
+            output_file = step3_dir / 'enriched_features.csv'
+            merged.to_csv(output_file, index=False)
+
+            features_added = len(merged.columns) - 10  # 减去原始10列
+            logger.info(f"特征增强完成: {output_file}, 新增 {features_added} 个特征")
+
+            # 保存元数据
+            self.save_param_metadata(params, 3, {
+                'features_added': features_added,
+                'total_features': len(merged.columns)
+            })
+
+            return {
+                'success': True,
+                'features_added': features_added,
+                'output_file': str(output_file)
+            }
+
+        except Exception as e:
+            logger.error(f"Step 3 执行失败: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    def step4_statistical_analysis(self, params: Dict) -> Dict:
+        """
+        Step 4: 统计分析
+
+        执行描述性统计和组间比较（ANOVA）
+
+        Args:
+            params: RQA参数
+
+        Returns:
+            {
+                'success': True,
+                'significant_features': int,
+                'output_files': List[str]
+            }
+        """
+        try:
+            logger.info(f"开始Step 4: 统计分析, 参数={params}")
+
+            step3_dir = self.get_step_directory(params, 'step3_feature_enrichment')
+            enriched_file = step3_dir / 'enriched_features.csv'
+
+            if not enriched_file.exists():
+                raise ValueError(f"Step 3输出文件不存在: {enriched_file}")
+
+            data = pd.read_csv(enriched_file)
+
+            # 1. 描述性统计
+            numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
+            desc_stats = data.groupby('Group')[numeric_cols].agg(['mean', 'std', 'min', 'max', 'count'])
+
+            # 2. 组间比较（ANOVA）
+            from scipy.stats import f_oneway
+
+            comparison_results = []
+
+            groups_list = data['Group'].unique()
+
+            for col in numeric_cols:
+                try:
+                    # 提取各组数据
+                    group_data = []
+                    for group in groups_list:
+                        vals = data[data['Group'] == group][col].dropna()
+                        if len(vals) > 0:
+                            group_data.append(vals)
+
+                    # 至少需要2组数据
+                    if len(group_data) >= 2:
+                        f_stat, p_value = f_oneway(*group_data)
+
+                        comparison_results.append({
+                            'feature': col,
+                            'f_statistic': f_stat,
+                            'p_value': p_value,
+                            'significant': p_value < 0.05,
+                            'significance_level': '***' if p_value < 0.001 else '**' if p_value < 0.01 else '*' if p_value < 0.05 else 'ns'
+                        })
+
+                except Exception as e:
+                    logger.warning(f"特征 {col} 的ANOVA计算失败: {e}")
+
+            # 3. 相关性矩阵
+            corr_matrix = data[numeric_cols].corr()
+
+            # 保存结果
+            step4_dir = self.get_step_directory(params, 'step4_statistical_analysis')
+
+            desc_stats.to_csv(step4_dir / 'descriptive_stats.csv')
+            pd.DataFrame(comparison_results).to_csv(step4_dir / 'group_comparison.csv', index=False)
+            corr_matrix.to_csv(step4_dir / 'correlation_matrix.csv')
+
+            significant_count = sum(1 for r in comparison_results if r['significant'])
+
+            logger.info(f"统计分析完成: {significant_count}/{len(comparison_results)} 个特征显著")
+
+            # 保存元数据
+            self.save_param_metadata(params, 4, {
+                'significant_features': significant_count,
+                'total_features_tested': len(comparison_results)
+            })
+
+            return {
+                'success': True,
+                'significant_features': significant_count,
+                'output_files': [
+                    str(step4_dir / 'descriptive_stats.csv'),
+                    str(step4_dir / 'group_comparison.csv'),
+                    str(step4_dir / 'correlation_matrix.csv')
+                ]
+            }
+
+        except Exception as e:
+            logger.error(f"Step 4 执行失败: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    def step5_visualization(self, params: Dict, max_samples: int = 10) -> Dict:
+        """
+        Step 5: 可视化
+
+        生成统计图表
+
+        Args:
+            params: RQA参数
+            max_samples: 递归图最大抽样数量
+
+        Returns:
+            {
+                'success': True,
+                'plots_generated': int,
+                'output_dir': str
+            }
+        """
+        try:
+            logger.info(f"开始Step 5: 可视化, 参数={params}")
+
+            import matplotlib.pyplot as plt
+            import seaborn as sns
+
+            # 设置中文字体
+            plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial', 'DejaVu Sans']
+            plt.rcParams['axes.unicode_minus'] = False
+
+            step3_dir = self.get_step_directory(params, 'step3_feature_enrichment')
+            step4_dir = self.get_step_directory(params, 'step4_statistical_analysis')
+            step5_dir = self.get_step_directory(params, 'step5_visualization')
+
+            enriched_file = step3_dir / 'enriched_features.csv'
+            comparison_file = step4_dir / 'group_comparison.csv'
+            corr_file = step4_dir / 'correlation_matrix.csv'
+
+            if not enriched_file.exists():
+                raise ValueError(f"特征文件不存在: {enriched_file}")
+
+            data = pd.read_csv(enriched_file)
+            plots_count = 0
+
+            # 创建子目录
+            stat_plots_dir = step5_dir / 'statistical_plots'
+            stat_plots_dir.mkdir(parents=True, exist_ok=True)
+
+            # 1. 组间比较箱线图（RQA核心指标）
+            rqa_features = ['RR-1D-x', 'DET-1D-x', 'ENT-1D-x',
+                           'RR-2D-xy', 'DET-2D-xy', 'ENT-2D-xy']
+
+            fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+            axes = axes.flatten()
+
+            for idx, feature in enumerate(rqa_features):
+                if feature in data.columns:
+                    sns.boxplot(data=data, x='Group', y=feature, ax=axes[idx])
+                    axes[idx].set_title(f'{feature} by Group', fontsize=12, fontweight='bold')
+                    axes[idx].set_xlabel('Group', fontsize=10)
+                    axes[idx].set_ylabel(feature, fontsize=10)
+
+            plt.tight_layout()
+            plt.savefig(stat_plots_dir / 'rqa_metrics_boxplot.png', dpi=150, bbox_inches='tight')
+            plt.close()
+            plots_count += 1
+
+            # 2. 相关性热力图
+            if corr_file.exists():
+                corr_matrix = pd.read_csv(corr_file, index_col=0)
+
+                # 只显示RQA相关特征
+                rqa_cols = [col for col in corr_matrix.columns if 'RR' in col or 'DET' in col or 'ENT' in col or 'rqa' in col.lower()]
+                if len(rqa_cols) > 1:
+                    corr_subset = corr_matrix.loc[rqa_cols, rqa_cols]
+
+                    fig, ax = plt.subplots(figsize=(12, 10))
+                    sns.heatmap(corr_subset, annot=True, fmt='.2f', cmap='coolwarm',
+                               center=0, vmin=-1, vmax=1, ax=ax)
+                    ax.set_title('RQA Features Correlation Matrix', fontsize=14, fontweight='bold')
+                    plt.tight_layout()
+                    plt.savefig(stat_plots_dir / 'correlation_heatmap.png', dpi=150, bbox_inches='tight')
+                    plt.close()
+                    plots_count += 1
+
+            # 3. 显著性特征柱状图
+            if comparison_file.exists() and comparison_file.stat().st_size > 0:
+                try:
+                    comparison = pd.read_csv(comparison_file)
+                    if len(comparison) == 0:
+                        logger.warning("组间比较结果为空，跳过显著性特征图")
+                    else:
+                        significant = comparison[comparison['significant'] == True].sort_values('p_value')
+
+                        if len(significant) > 0:
+                            top_n = min(15, len(significant))
+                            top_significant = significant.head(top_n)
+
+                            fig, ax = plt.subplots(figsize=(12, 8))
+                            bars = ax.barh(range(len(top_significant)), -np.log10(top_significant['p_value']))
+                            ax.set_yticks(range(len(top_significant)))
+                            ax.set_yticklabels(top_significant['feature'])
+                            ax.set_xlabel('-log10(p-value)', fontsize=12)
+                            ax.set_title('Top Significant Features (ANOVA)', fontsize=14, fontweight='bold')
+                            ax.axvline(x=-np.log10(0.05), color='r', linestyle='--', label='p=0.05')
+                            ax.legend()
+                            plt.tight_layout()
+                            plt.savefig(stat_plots_dir / 'significant_features.png', dpi=150, bbox_inches='tight')
+                            plt.close()
+                            plots_count += 1
+                except Exception as e:
+                    logger.warning(f"生成显著性特征图失败: {e}")
+
+            # 4. 复杂度指标小提琴图
+            if 'rqa_complexity_1d' in data.columns and 'rqa_complexity_2d' in data.columns:
+                fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+                sns.violinplot(data=data, x='Group', y='rqa_complexity_1d', ax=axes[0])
+                axes[0].set_title('RQA Complexity (1D)', fontsize=12, fontweight='bold')
+
+                sns.violinplot(data=data, x='Group', y='rqa_complexity_2d', ax=axes[1])
+                axes[1].set_title('RQA Complexity (2D)', fontsize=12, fontweight='bold')
+
+                plt.tight_layout()
+                plt.savefig(stat_plots_dir / 'complexity_violin.png', dpi=150, bbox_inches='tight')
+                plt.close()
+                plots_count += 1
+
+            logger.info(f"可视化完成: 生成 {plots_count} 个图表")
+
+            # 保存元数据
+            self.save_param_metadata(params, 5, {
+                'plots_generated': plots_count
+            })
+
+            return {
+                'success': True,
+                'plots_generated': plots_count,
+                'output_dir': str(step5_dir)
+            }
+
+        except Exception as e:
+            logger.error(f"Step 5 执行失败: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e)
+            }
