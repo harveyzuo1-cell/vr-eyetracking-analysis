@@ -85,7 +85,8 @@ class RQAAnalysisService:
             eps_step = eps_range['step']
             eps_values = []
             current_eps = eps_start
-            while current_eps <= eps_end:
+            # 使用小的容差来避免浮点精度问题
+            while current_eps <= eps_end + eps_step * 0.01:
                 eps_values.append(round(current_eps, 6))  # 避免浮点精度问题
                 current_eps += eps_step
 

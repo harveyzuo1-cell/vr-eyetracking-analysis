@@ -14,10 +14,10 @@ const ParamConfigPanel = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [paramRanges, setParamRanges] = useState({
-    m: { start: 1, end: 3, step: 1 },
-    tau: { start: 1, end: 2, step: 1 },
-    eps: { start: 0.05, end: 0.06, step: 0.01 },
-    lmin: { start: 2, end: 2, step: 1 }
+    m: { start: 1, end: 4, step: 1 },
+    tau: { start: 1, end: 8, step: 1 },
+    eps: { start: 0.050, end: 0.100, step: 0.005 },
+    lmin: { start: 2, end: 3, step: 1 }
   });
 
   // 使用useMemo计算参数组合总数

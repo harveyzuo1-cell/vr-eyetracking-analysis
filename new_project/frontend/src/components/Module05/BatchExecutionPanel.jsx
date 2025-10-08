@@ -19,6 +19,23 @@ const BatchExecutionPanel = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState(['control', 'mci', 'ad']);
+  const [paramCombinations, setParamCombinations] = useState([]);
+
+  // 加载缓存的参数组合
+  useEffect(() => {
+    loadParamCombinations();
+  }, []);
+
+  const loadParamCombinations = async () => {
+    try {
+      const response = await axios.get('/api/m05/params/history');
+      if (response.data.success && response.data.combinations) {
+        setParamCombinations(response.data.combinations);
+      }
+    } catch (error) {
+      console.error('加载参数组合失败:', error);
+    }
+  };
 
   // 轮询任务状态
   useEffect(() => {
@@ -57,22 +74,29 @@ const BatchExecutionPanel = () => {
   }, [isRunning, taskStatus?.task_id]);
 
   const handleStartAnalysis = async () => {
+    if (paramCombinations.length === 0) {
+      message.warning('请先在「参数配置」页面生成参数组合');
+      return;
+    }
+
+    if (selectedGroups.length === 0) {
+      message.warning('请至少选择一个分析组别');
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // 提交异步任务
+      // 提交异步任务，使用缓存的参数组合
       const response = await axios.post('/api/m05/tasks/submit', {
-        param_combinations: [
-          { m: 2, tau: 1, eps: 0.05, lmin: 2 },
-          { m: 2, tau: 1, eps: 0.051, lmin: 2 }
-        ],
+        param_combinations: paramCombinations,
         groups: selectedGroups
       });
 
       if (response.data.success) {
         setTaskStatus(response.data);
         setIsRunning(true);
-        message.success('批量分析任务已提交到后台执行');
+        message.success(`批量分析任务已提交：${paramCombinations.length} 个参数组合 × ${selectedGroups.length} 个组别`);
       } else {
         message.error('提交任务失败');
       }
@@ -142,12 +166,21 @@ const BatchExecutionPanel = () => {
             />
           </div>
 
-          <Alert
-            message="测试模式"
-            description="当前使用预设的2个参数组合进行测试。完整批量分析请在「参数配置」中生成参数组合后执行。"
-            type="info"
-            showIcon
-          />
+          {paramCombinations.length > 0 ? (
+            <Alert
+              message={`已加载 ${paramCombinations.length} 个参数组合`}
+              description={`选中 ${selectedGroups.length} 个组别，预计处理 ${paramCombinations.length * selectedGroups.length} 个任务`}
+              type="success"
+              showIcon
+            />
+          ) : (
+            <Alert
+              message="尚未生成参数组合"
+              description="请先在「参数配置」页面生成参数组合后再执行批量分析"
+              type="warning"
+              showIcon
+            />
+          )}
         </Space>
       </Card>
 
