@@ -11,6 +11,7 @@ import Module00 from './pages/Module00';
 import Module01 from './pages/Module01/Module01';
 import Module02 from './pages/Module02/Module02';
 import Module04 from './pages/Module04/Module04';
+import Module05 from './pages/Module05/Module05';
 import ModuleEX from './pages/ModuleEX';
 import ModuleEX2 from './pages/ModuleEX2/ModuleEX2';
 
@@ -26,7 +27,7 @@ function App() {
             <Route path="module02" element={<Module02 />} />
             <Route path="module03" element={<div>模块3开发中...</div>} />
             <Route path="module04" element={<Module04 />} />
-            <Route path="module05" element={<div>模块5开发中...</div>} />
+            <Route path="module05" element={<Module05 />} />
             <Route path="module06" element={<div>模块6开发中...</div>} />
             <Route path="module07" element={<div>模块7开发中...</div>} />
             <Route path="module08" element={<div>模块8开发中...</div>} />
