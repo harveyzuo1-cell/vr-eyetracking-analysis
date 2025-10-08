@@ -2,11 +2,12 @@
  * 结果查看器
  * 查看和浏览RQA分析结果
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card, Table, Button, message, Space, Tag, Descriptions, Drawer
 } from 'antd';
 import { FileSearchOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import PropTypes from 'prop-types';
 import axios from 'axios';
 
 const ResultsViewer = () => {
@@ -15,11 +16,7 @@ const ResultsViewer = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
 
-  useEffect(() => {
-    loadTasks();
-  }, []);
-
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get('/api/m05/tasks/list');
@@ -31,13 +28,17 @@ const ResultsViewer = () => {
       }
     } catch (error) {
       console.error('加载任务列表失败:', error);
-      message.error('加载任务列表失败: ' + error.message);
+      message.error('加载任务列表失败: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getStatusTag = (status) => {
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
+
+  const getStatusTag = useCallback((status) => {
     const statusMap = {
       'pending': { color: 'default', text: '等待中' },
       'running': { color: 'processing', text: '运行中' },
@@ -47,14 +48,14 @@ const ResultsViewer = () => {
     };
     const config = statusMap[status] || statusMap['pending'];
     return <Tag color={config.color}>{config.text}</Tag>;
-  };
+  }, []);
 
-  const handleViewDetails = (task) => {
+  const handleViewDetails = useCallback((task) => {
     setSelectedTask(task);
     setDrawerVisible(true);
-  };
+  }, []);
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: '任务ID',
       dataIndex: 'task_id',
@@ -121,7 +122,7 @@ const ResultsViewer = () => {
         </Button>
       )
     }
-  ];
+  ], [getStatusTag, handleViewDetails]);
 
   return (
     <div>

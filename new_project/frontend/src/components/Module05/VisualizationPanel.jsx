@@ -2,31 +2,31 @@
  * 可视化分析面板
  * 展示RQA分析结果的统计图表
  */
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Card, Row, Col, Image, Empty, Button, message, Space, Select
 } from 'antd';
 import { PictureOutlined, DownloadOutlined } from '@ant-design/icons';
+import PropTypes from 'prop-types';
 
 const { Option } = Select;
 
 const VisualizationPanel = () => {
   const [selectedSignature, setSelectedSignature] = useState('m2_tau1_eps0.05_lmin2');
-  const [loading, setLoading] = useState(false);
 
   // 模拟可用的参数签名列表
-  const signatures = [
+  const signatures = useMemo(() => [
     'm2_tau1_eps0.05_lmin2',
     'm2_tau1_eps0.051_lmin2',
     'm3_tau2_eps0.05_lmin2'
-  ];
+  ], []);
 
   // 生成图片URL
-  const getImageUrl = (filename) => {
+  const getImageUrl = useCallback((filename) => {
     return `/api/m05/visualizations/${selectedSignature}/${filename}`;
-  };
+  }, [selectedSignature]);
 
-  const plots = [
+  const plots = useMemo(() => [
     {
       title: 'RQA指标箱线图',
       filename: 'rqa_metrics_boxplot.png',
@@ -47,9 +47,9 @@ const VisualizationPanel = () => {
       filename: 'complexity_violin.png',
       description: 'RQA复杂度指标（1D和2D）的分布密度'
     }
-  ];
+  ], []);
 
-  const handleDownload = async (filename) => {
+  const handleDownload = useCallback(async (filename) => {
     try {
       const url = getImageUrl(filename);
       const link = document.createElement('a');
@@ -60,9 +60,10 @@ const VisualizationPanel = () => {
       document.body.removeChild(link);
       message.success('下载成功');
     } catch (error) {
-      message.error('下载失败');
+      console.error('下载失败:', error);
+      message.error('下载失败: ' + (error.message || '未知错误'));
     }
-  };
+  }, [getImageUrl]);
 
   return (
     <div>

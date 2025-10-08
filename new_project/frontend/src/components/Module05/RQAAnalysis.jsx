@@ -2,7 +2,7 @@
  * Module05: RQA递归量化分析
  * 完整的5步RQA分析流程
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Tabs, Card } from 'antd';
 import {
   SettingOutlined,
@@ -18,7 +18,7 @@ import VisualizationPanel from './VisualizationPanel';
 const RQAAnalysis = () => {
   const [activeTab, setActiveTab] = useState('1');
 
-  const tabItems = [
+  const tabItems = useMemo(() => [
     {
       key: '1',
       label: (
@@ -59,7 +59,11 @@ const RQAAnalysis = () => {
       ),
       children: <VisualizationPanel />
     }
-  ];
+  ], []);
+
+  const handleTabChange = useCallback((key) => {
+    setActiveTab(key);
+  }, []);
 
   return (
     <div style={{ padding: '24px' }}>
@@ -79,7 +83,7 @@ const RQAAnalysis = () => {
       >
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={tabItems}
           size="large"
         />
