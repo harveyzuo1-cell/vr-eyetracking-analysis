@@ -2,16 +2,16 @@
  * RQA参数配置面板
  * 配置 m, tau, eps, lmin 参数范围
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Card, Row, Col, Form, InputNumber, Button, Statistic, message, Space, Divider, Alert
 } from 'antd';
 import { ThunderboltOutlined, CalculatorOutlined } from '@ant-design/icons';
+import PropTypes from 'prop-types';
 import axios from 'axios';
 
 const ParamConfigPanel = () => {
   const [form] = Form.useForm();
-  const [totalCombinations, setTotalCombinations] = useState(0);
   const [loading, setLoading] = useState(false);
   const [paramRanges, setParamRanges] = useState({
     m: { start: 1, end: 3, step: 1 },
@@ -20,12 +20,8 @@ const ParamConfigPanel = () => {
     lmin: { start: 2, end: 2, step: 1 }
   });
 
-  // 计算参数组合总数
-  useEffect(() => {
-    calculateTotalCombinations();
-  }, [paramRanges]);
-
-  const calculateTotalCombinations = () => {
+  // 使用useMemo计算参数组合总数
+  const totalCombinations = useMemo(() => {
     const { m, tau, eps, lmin } = paramRanges;
 
     const mCount = Math.floor((m.end - m.start) / m.step) + 1;
@@ -33,23 +29,24 @@ const ParamConfigPanel = () => {
     const epsCount = Math.round((eps.end - eps.start) / eps.step) + 1;
     const lminCount = Math.floor((lmin.end - lmin.start) / lmin.step) + 1;
 
-    const total = mCount * tauCount * epsCount * lminCount;
-    setTotalCombinations(total);
-  };
+    return mCount * tauCount * epsCount * lminCount;
+  }, [paramRanges]);
 
-  const handleValuesChange = (changedValues, allValues) => {
-    // 更新 paramRanges
-    const newRanges = { ...paramRanges };
-    Object.keys(changedValues).forEach(key => {
-      const [param, field] = key.split('_');
-      if (newRanges[param]) {
-        newRanges[param][field] = changedValues[key];
-      }
+  // 使用useCallback优化事件处理
+  const handleValuesChange = useCallback((changedValues) => {
+    setParamRanges(prev => {
+      const newRanges = { ...prev };
+      Object.keys(changedValues).forEach(key => {
+        const [param, field] = key.split('_');
+        if (newRanges[param]) {
+          newRanges[param] = { ...newRanges[param], [field]: changedValues[key] };
+        }
+      });
+      return newRanges;
     });
-    setParamRanges(newRanges);
-  };
+  }, []);
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -63,7 +60,7 @@ const ParamConfigPanel = () => {
       if (response.data.success) {
         message.success(`成功生成 ${response.data.total_combinations} 个参数组合`);
       } else {
-        message.error('生成参数组合失败');
+        message.error('生成参数组合失败: ' + (response.data.error || '未知错误'));
       }
     } catch (error) {
       console.error('生成参数组合失败:', error);
@@ -71,9 +68,9 @@ const ParamConfigPanel = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paramRanges]);
 
-  const ParamRangeInput = ({ label, param }) => (
+  const ParamRangeInput = useCallback(({ label, param }) => (
     <Card size="small" title={label} style={{ height: '100%' }}>
       <Form.Item
         label="起始值"
@@ -97,7 +94,12 @@ const ParamConfigPanel = () => {
         <InputNumber style={{ width: '100%' }} step={param === 'eps' ? 0.001 : 1} min={0.001} />
       </Form.Item>
     </Card>
-  );
+  ), [paramRanges]);
+
+  ParamRangeInput.propTypes = {
+    label: PropTypes.string.isRequired,
+    param: PropTypes.string.isRequired
+  };
 
   return (
     <div>

@@ -2,16 +2,16 @@
  * 批量执行面板
  * 提交异步批量RQA任务，监控进度
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card, Button, Progress, Statistic, message, Row, Col, Space, Alert, Checkbox, Tag, Descriptions
 } from 'antd';
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
-  ReloadOutlined,
-  CheckCircleOutlined
+  ReloadOutlined
 } from '@ant-design/icons';
+import PropTypes from 'prop-types';
 import axios from 'axios';
 
 const BatchExecutionPanel = () => {
