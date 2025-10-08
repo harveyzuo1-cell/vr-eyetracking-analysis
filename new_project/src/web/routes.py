@@ -84,6 +84,10 @@ def register_routes(app: Flask):
     from src.modules.module04_event_analysis.api import m04_bp
     app.register_blueprint(m04_bp)
 
+    # 注册Module05: RQA递归量化分析
+    from src.modules.module05_rqa_analysis.api import m05_bp
+    app.register_blueprint(m05_bp)
+
     # 静态文件服务: 背景图片
     @app.route('/static/background_images/<version>/<filename>')
     def serve_background_image(version, filename):
