@@ -130,7 +130,7 @@ def get_param_history():
 @handle_api_errors
 def analyze_single():
     """
-    分析单个参数组合（执行Step 1和Step 2）
+    分析单个参数组合（执行完整的5步流水线）
 
     Request Body:
     {
@@ -142,7 +142,10 @@ def analyze_single():
     {
         "success": true,
         "step1_result": {...},
-        "step2_result": {...}
+        "step2_result": {...},
+        "step3_result": {...},
+        "step4_result": {...},
+        "step5_result": {...}
     }
     """
     data = request.get_json()
@@ -159,39 +162,14 @@ def analyze_single():
 
     service = get_service()
 
-    # Step 1: RQA计算
-    step1_result = service.step1_rqa_calculation(params, groups)
-    if not step1_result['success']:
-        return jsonify(step1_result), 500
+    # 执行完整流水线
+    result = service.run_full_pipeline(params, groups)
 
-    # Step 2: 数据合并
-    step2_result = service.step2_data_merging(params, groups)
-    if not step2_result['success']:
-        return jsonify(step2_result), 500
+    # 根据结果返回状态码
+    if not result['success']:
+        return jsonify(result), 500
 
-    # Step 3: 特征增强
-    step3_result = service.step3_feature_enrichment(params)
-    if not step3_result['success']:
-        logger.warning(f"Step 3失败: {step3_result.get('error')}")
-
-    # Step 4: 统计分析
-    step4_result = service.step4_statistical_analysis(params)
-    if not step4_result['success']:
-        logger.warning(f"Step 4失败: {step4_result.get('error')}")
-
-    # Step 5: 可视化
-    step5_result = service.step5_visualization(params)
-    if not step5_result['success']:
-        logger.warning(f"Step 5失败: {step5_result.get('error')}")
-
-    return jsonify({
-        'success': True,
-        'step1_result': step1_result,
-        'step2_result': step2_result,
-        'step3_result': step3_result,
-        'step4_result': step4_result,
-        'step5_result': step5_result
-    })
+    return jsonify(result)
 
 
 @m05_bp.route('/analyze/batch', methods=['POST'])
@@ -250,42 +228,15 @@ def analyze_batch():
                 failed += 1
                 continue
 
-            # Step 1: RQA计算
-            step1_result = service.step1_rqa_calculation(params, groups)
-            if not step1_result['success']:
+            # 执行完整流水线
+            pipeline_result = service.run_full_pipeline(params, groups)
+
+            if pipeline_result['success']:
+                results.append(pipeline_result)
+                completed += 1
+            else:
+                logger.warning(f"流水线执行失败: {params} - {pipeline_result.get('error')}")
                 failed += 1
-                continue
-
-            # Step 2: 数据合并
-            step2_result = service.step2_data_merging(params, groups)
-            if not step2_result['success']:
-                failed += 1
-                continue
-
-            # Step 3: 特征增强
-            step3_result = service.step3_feature_enrichment(params)
-            if not step3_result['success']:
-                logger.warning(f"Step 3失败: {step3_result.get('error')}")
-
-            # Step 4: 统计分析
-            step4_result = service.step4_statistical_analysis(params)
-            if not step4_result['success']:
-                logger.warning(f"Step 4失败: {step4_result.get('error')}")
-
-            # Step 5: 可视化
-            step5_result = service.step5_visualization(params)
-            if not step5_result['success']:
-                logger.warning(f"Step 5失败: {step5_result.get('error')}")
-
-            results.append({
-                'params': params,
-                'step1_result': step1_result,
-                'step2_result': step2_result,
-                'step3_result': step3_result,
-                'step4_result': step4_result,
-                'step5_result': step5_result
-            })
-            completed += 1
 
         except Exception as e:
             logger.error(f"处理参数组合失败: {params} - {e}")

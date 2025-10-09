@@ -497,6 +497,90 @@ class RQAAnalysisService:
         """
         return self.pipeline.step5_visualization(params, max_samples)
 
+    def run_full_pipeline(self, params: Dict, groups: List[str] = None,
+                         max_samples: int = 10) -> Dict:
+        """
+        执行完整的5步RQA分析流水线
+
+        Args:
+            params: RQA参数 {'m': int, 'tau': int, 'eps': float, 'lmin': int}
+            groups: 分组列表,默认 ['control', 'mci', 'ad']
+            max_samples: Step 5可视化最大抽样数量
+
+        Returns:
+            {
+                'success': bool,
+                'step1_result': Dict,
+                'step2_result': Dict,
+                'step3_result': Dict,
+                'step4_result': Dict,
+                'step5_result': Dict,
+                'error': str (if failed)
+            }
+        """
+        if groups is None:
+            groups = ['control', 'mci', 'ad']
+
+        results = {
+            'success': True,
+            'params': params,
+            'groups': groups
+        }
+
+        try:
+            # Step 1: RQA计算
+            logger.info(f"执行 Step 1: RQA计算 - 参数: {params}")
+            step1_result = self.step1_rqa_calculation(params, groups)
+            results['step1_result'] = step1_result
+
+            if not step1_result['success']:
+                results['success'] = False
+                results['error'] = f"Step 1失败: {step1_result.get('error', 'Unknown error')}"
+                return results
+
+            # Step 2: 数据合并
+            logger.info(f"执行 Step 2: 数据合并")
+            step2_result = self.step2_data_merging(params, groups)
+            results['step2_result'] = step2_result
+
+            if not step2_result['success']:
+                results['success'] = False
+                results['error'] = f"Step 2失败: {step2_result.get('error', 'Unknown error')}"
+                return results
+
+            # Step 3: 特征增强
+            logger.info(f"执行 Step 3: 特征增强")
+            step3_result = self.step3_feature_enrichment(params)
+            results['step3_result'] = step3_result
+
+            if not step3_result['success']:
+                logger.warning(f"Step 3失败: {step3_result.get('error')}")
+
+            # Step 4: 统计分析
+            logger.info(f"执行 Step 4: 统计分析")
+            step4_result = self.step4_statistical_analysis(params)
+            results['step4_result'] = step4_result
+
+            if not step4_result['success']:
+                logger.warning(f"Step 4失败: {step4_result.get('error')}")
+
+            # Step 5: 可视化
+            logger.info(f"执行 Step 5: 可视化")
+            step5_result = self.step5_visualization(params, max_samples)
+            results['step5_result'] = step5_result
+
+            if not step5_result['success']:
+                logger.warning(f"Step 5失败: {step5_result.get('error')}")
+
+            logger.info(f"完整流水线执行完成 - 参数: {params}")
+            return results
+
+        except Exception as e:
+            logger.error(f"执行完整流水线失败: {e}", exc_info=True)
+            results['success'] = False
+            results['error'] = str(e)
+            return results
+
     def scan_completed_results(self, task_id: Optional[str] = None) -> List[Dict]:
         """
         扫描已完成的RQA分析结果
