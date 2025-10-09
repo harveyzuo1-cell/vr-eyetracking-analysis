@@ -199,10 +199,10 @@ class TaskAnalyzer:
         if len(task_df) == 0:
             raise ValueError(f"没有找到任务数据: {tasks}")
 
-        # 3. 识别RQA特征
-        rqa_features = [col for col in df.columns if any(
-            col.startswith(prefix) for prefix in ['x_', 'y_', 'combined_']
-        )]
+        # 3. 识别RQA特征（匹配实际列名格式: RR-1D-x, DET-1D-x, rqa_*等）
+        rqa_features = [col for col in df.columns if any([
+            col.startswith(prefix) for prefix in ['x_', 'y_', 'combined_', 'rr-', 'det-', 'ent-', 'rqa_']
+        ])]
 
         # 4. 对每个特征进行任务间比较
         comparison_results = []
@@ -234,7 +234,7 @@ class TaskAnalyzer:
                     f_stat, p_value = stats.f_oneway(*task_samples)
                     feature_comparison['f_stat'] = float(f_stat)
                     feature_comparison['p_value'] = float(p_value)
-                    feature_comparison['significant'] = p_value < 0.05
+                    feature_comparison['significant'] = bool(p_value < 0.05)
                 except Exception as e:
                     logger.warning(f"任务间ANOVA失败 (特征={feature}): {e}")
                     feature_comparison['f_stat'] = None
