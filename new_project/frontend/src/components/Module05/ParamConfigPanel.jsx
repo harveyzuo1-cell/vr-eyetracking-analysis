@@ -1,10 +1,10 @@
 /**
  * RQA参数配置面板
- * 配置 m, tau, eps, lmin 参数范围
+ * 配置 m, tau, eps, lmin 参数范围 + 数据版本选择
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  Card, Row, Col, Form, InputNumber, Button, Statistic, message, Space, Divider, Alert
+  Card, Row, Col, Form, InputNumber, Button, Statistic, message, Space, Divider, Alert, Radio
 } from 'antd';
 import { ThunderboltOutlined, CalculatorOutlined } from '@ant-design/icons';
 import PropTypes from 'prop-types';
@@ -13,6 +13,7 @@ import axios from 'axios';
 const ParamConfigPanel = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [dataVersion, setDataVersion] = useState('v1');
   const [paramRanges, setParamRanges] = useState({
     m: { start: 1, end: 4, step: 1 },
     tau: { start: 1, end: 8, step: 1 },
@@ -54,11 +55,12 @@ const ParamConfigPanel = () => {
         m_range: paramRanges.m,
         tau_range: paramRanges.tau,
         eps_range: paramRanges.eps,
-        lmin_range: paramRanges.lmin
+        lmin_range: paramRanges.lmin,
+        data_version: dataVersion
       });
 
       if (response.data.success) {
-        message.success(`成功生成 ${response.data.total_combinations} 个参数组合`);
+        message.success(`成功生成 ${response.data.total_combinations} 个参数组合 (${dataVersion.toUpperCase()}数据)`);
       } else {
         message.error('生成参数组合失败: ' + (response.data.error || '未知错误'));
       }
@@ -68,7 +70,7 @@ const ParamConfigPanel = () => {
     } finally {
       setLoading(false);
     }
-  }, [paramRanges]);
+  }, [paramRanges, dataVersion]);
 
   const ParamRangeInput = useCallback(({ label, param }) => (
     <Card size="small" title={label} style={{ height: '100%' }}>
@@ -117,6 +119,28 @@ const ParamConfigPanel = () => {
         showIcon
         style={{ marginBottom: 24 }}
       />
+
+      <Card title="数据版本选择" style={{ marginBottom: 24 }}>
+        <Form.Item label="选择要分析的数据版本">
+          <Radio.Group
+            value={dataVersion}
+            onChange={(e) => setDataVersion(e.target.value)}
+            buttonStyle="solid"
+          >
+            <Radio.Button value="v1">V1数据 (Legacy Unity格式)</Radio.Button>
+            <Radio.Button value="v2">V2数据 (新版格式)</Radio.Button>
+          </Radio.Group>
+        </Form.Item>
+        <Alert
+          message={
+            dataVersion === 'v1'
+              ? '✅ V1数据: 包含有MMSE分数的受试者 (每组20人×5任务=100个文件)'
+              : '⚠️ V2数据: 预留接口，等待数据导入'
+          }
+          type={dataVersion === 'v1' ? 'success' : 'warning'}
+          showIcon
+        />
+      </Card>
 
       <Form
         form={form}

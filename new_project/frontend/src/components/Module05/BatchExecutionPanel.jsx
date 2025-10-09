@@ -139,6 +139,8 @@ const BatchExecutionPanel = () => {
       if (response.data.success) {
         setIsRunning(false);
         message.info('任务已取消');
+        // 立即刷新任务状态
+        fetchTaskStatus(taskStatus.task_id);
       } else {
         message.error('取消任务失败');
       }
@@ -370,6 +372,7 @@ const BatchExecutionPanel = () => {
                     </Button>
                   </>
                 )}
+                {/* 终止状态(completed/failed/cancelled)只显示重置按钮 */}
                 <Button
                   icon={<ReloadOutlined />}
                   onClick={() => {

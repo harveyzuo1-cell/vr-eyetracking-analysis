@@ -14,6 +14,12 @@ from pathlib import Path
 import math
 
 from src.utils.logger import setup_logger
+from src.modules.module05_rqa_analysis.rqa_fast import (
+    compute_distance_matrix_euclidean,
+    compute_distance_matrix_cityblock,
+    compute_recurrence_matrix_fast,
+    compute_rqa_metrics_fast
+)
 
 logger = setup_logger(__name__)
 
@@ -206,7 +212,7 @@ class RQAAnalyzer:
     def compute_recurrence_matrix(self, embedded: np.ndarray, eps: float,
                                   metric: str = 'euclidean') -> np.ndarray:
         """
-        计算递归矩阵
+        计算递归矩阵 (使用Numba加速)
 
         Args:
             embedded: 嵌入矩阵，shape=(M, d)
@@ -220,28 +226,24 @@ class RQAAnalyzer:
             RP[i,j] = 1 if dist(embedded[i], embedded[j]) <= eps
                       0 otherwise
         """
-        M = embedded.shape[0]
-
-        # 使用向量化方法加速计算
+        # 使用Numba加速的距离矩阵计算
         if metric == '1d_abs':
             # 曼哈顿距离（L1范数）
-            from scipy.spatial.distance import pdist, squareform
-            dist_matrix = squareform(pdist(embedded, metric='cityblock'))
+            dist_matrix = compute_distance_matrix_cityblock(embedded)
         elif metric == 'euclidean':
             # 欧几里得距离（L2范数）
-            from scipy.spatial.distance import pdist, squareform
-            dist_matrix = squareform(pdist(embedded, metric='euclidean'))
+            dist_matrix = compute_distance_matrix_euclidean(embedded)
         else:
             raise ValueError(f"不支持的距离度量: {metric}")
 
-        # 生成递归矩阵
-        RP = (dist_matrix <= eps).astype(np.int8)
+        # 使用Numba加速的递归矩阵生成
+        RP = compute_recurrence_matrix_fast(dist_matrix, eps)
 
         return RP
 
     def compute_rqa_metrics(self, RP: np.ndarray, lmin: int = 2) -> Dict[str, float]:
         """
-        计算RQA指标
+        计算RQA指标 (使用Numba加速)
 
         Args:
             RP: 递归矩阵，shape=(M, M)
@@ -254,42 +256,8 @@ class RQAAnalyzer:
                 'ENT': float   # Entropy (熵)
             }
         """
-        M = RP.shape[0]
-
-        # 1. RR: 递归率 = 递归点数量 / 总点数
-        total_points = M * M
-        recurrence_points = np.sum(RP)
-        RR = recurrence_points / total_points if total_points > 0 else 0.0
-
-        # 2. 提取对角线长度分布
-        length_counts = self._extract_diagonal_lengths(RP)
-
-        # 计算总长度
-        total_length = sum(length * count for length, count in length_counts.items())
-
-        # 3. DET: 确定性 = (长度>=lmin的对角线长度之和) / (所有对角线长度之和)
-        det_length = sum(
-            length * count
-            for length, count in length_counts.items()
-            if length >= lmin
-        )
-        DET = det_length / total_length if total_length > 0 else 0.0
-
-        # 4. ENT: 熵 = -Σ p(l) * log2(p(l))  (对于l >= lmin)
-        # p(l) = 长度为l的对角线段数 / 长度>=lmin的对角线段总数
-        total_lines_lmin = sum(
-            count
-            for length, count in length_counts.items()
-            if length >= lmin
-        )
-
-        ENT = 0.0
-        if total_lines_lmin > 0:
-            for length, count in length_counts.items():
-                if length >= lmin:
-                    p_l = count / total_lines_lmin
-                    if p_l > 1e-12:  # 避免log(0)
-                        ENT += -p_l * math.log2(p_l)
+        # 使用Numba加速的RQA指标计算
+        RR, DET, ENT = compute_rqa_metrics_fast(RP, lmin)
 
         return {
             'RR': float(RR),

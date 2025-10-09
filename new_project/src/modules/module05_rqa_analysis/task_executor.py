@@ -1,13 +1,14 @@
 """
-RQA任务执行器 - CPU多线程并行处理
+RQA任务执行器 - 多进程并行处理 + Numba JIT加速
 
 实现大规模批量RQA分析的任务调度和并行执行
+优化: ProcessPoolExecutor绕过GIL限制 + Numba编译加速核心计算
 """
 
 import threading
 import time
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed, Future
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed, Future
 from typing import Dict, List, Callable, Optional
 from pathlib import Path
 from datetime import datetime
@@ -15,6 +16,7 @@ from dataclasses import dataclass, asdict
 from multiprocessing import cpu_count
 
 from src.utils.logger import setup_logger
+from src.modules.module05_rqa_analysis.worker_process import rqa_worker
 
 logger = setup_logger(__name__)
 
@@ -63,18 +65,21 @@ class TaskStatus:
 
 
 class RQATaskExecutor:
-    """RQA任务执行器 - CPU多线程"""
+    """RQA任务执行器 - 混合并行(主线程ThreadPool + RQA计算ProcessPool)"""
 
     def __init__(self, max_workers: int = None, tasks_dir: Path = None):
         """
         初始化任务执行器
 
         Args:
-            max_workers: 最大线程数，默认为CPU核心数
+            max_workers: 最大进程数，默认为CPU核心数
             tasks_dir: 任务状态保存目录
         """
         self.max_workers = max_workers or cpu_count()
-        self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
+        # 主执行线程池(用于_execute_batch_task)
+        self.thread_executor = ThreadPoolExecutor(max_workers=2)
+        # RQA计算进程池(用于rqa_worker)
+        self.process_executor = ProcessPoolExecutor(max_workers=self.max_workers)
 
         # 任务管理
         self.active_tasks: Dict[str, Future] = {}
@@ -140,8 +145,8 @@ class RQATaskExecutor:
         self.cancel_flags[task_id] = threading.Event()
         self.pause_flags[task_id] = threading.Event()
 
-        # 提交到线程池
-        future = self.executor.submit(
+        # 提交到线程池(主执行循环在线程中运行,内部调用进程池进行RQA计算)
+        future = self.thread_executor.submit(
             self._execute_batch_task,
             task_id,
             service,
@@ -266,53 +271,58 @@ class RQATaskExecutor:
     def _execute_step1_parallel(self, task_id: str, service,
                                 params: Dict, groups: List[str]) -> Dict:
         """
-        Step 1: 并行RQA计算
+        Step 1: 并行RQA计算 (使用ProcessPoolExecutor)
 
         策略:
-        - 将所有CSV文件分成batch
-        - 每个batch提交给线程池
-        - 等待所有batch完成
+        - 将所有CSV文件提交给进程池
+        - 使用rqa_worker函数进行计算
+        - 在主进程中保存结果
         """
         results = {group: [] for group in groups}
+        data_version = getattr(service, 'current_data_version', 'v1')
 
         for group in groups:
             # 扫描文件
             csv_files = service.scan_calibrated_files(group)
             logger.info(f"任务 {task_id}: 处理 {group} 组, {len(csv_files)} 个文件")
 
-            # 批量提交到线程池
-            batch_size = max(1, len(csv_files) // (self.max_workers * 3))
+            # 提交所有文件到进程池
             futures = []
-
-            for i in range(0, len(csv_files), batch_size):
-                batch = csv_files[i:i+batch_size]
-                future = self.executor.submit(
-                    self._process_file_batch,
-                    task_id,
-                    service,
-                    batch,
-                    params
+            for file_path in csv_files:
+                future = self.process_executor.submit(
+                    rqa_worker,
+                    str(file_path),  # 转为字符串以便序列化
+                    params,
+                    groups,
+                    data_version
                 )
-                futures.append((future, len(batch)))
+                futures.append(future)
 
             # 收集结果
-            for future, batch_len in futures:
+            for future in as_completed(futures):
                 # 检查取消标志
                 if self.cancel_flags[task_id].is_set():
                     return {'success': False, 'error': '任务已取消'}
 
                 try:
-                    batch_results = future.result()
-                    results[group].extend(batch_results)
+                    success, result, error = future.result()
 
-                    # 更新进度
-                    with self.progress_lock:
-                        self.task_status[task_id].processed_files += len(batch_results)
+                    if success and result:
+                        # result已经包含了subject_id, task_id和所有RQA指标
+                        results[group].append(result)
+
+                        # 更新进度
+                        with self.progress_lock:
+                            self.task_status[task_id].processed_files += 1
+                    else:
+                        logger.error(f"处理失败: {error}")
+                        with self.progress_lock:
+                            self.task_status[task_id].failed_files += 1
 
                 except Exception as e:
-                    logger.error(f"批处理失败: {e}")
+                    logger.error(f"Future处理失败: {e}")
                     with self.progress_lock:
-                        self.task_status[task_id].failed_files += batch_len
+                        self.task_status[task_id].failed_files += 1
 
             # 保存该组结果
             import pandas as pd
@@ -330,63 +340,13 @@ class RQATaskExecutor:
                 'files_failed': self.task_status[task_id].failed_files
             },
             task_id=task_id,
-            data_version='v1'  # 目前默认V1数据
+            data_version=data_version
         )
 
         return {
             'success': True,
             'total_files_processed': total_processed
         }
-
-    def _process_file_batch(self, task_id: str, service,
-                           files: List[Path], params: Dict) -> List[Dict]:
-        """
-        处理一批文件（在单个线程中）
-
-        Args:
-            task_id: 任务ID
-            service: RQAAnalysisService实例
-            files: 文件路径列表
-            params: RQA参数
-
-        Returns:
-            结果列表
-        """
-        results = []
-
-        for file_path in files:
-            # 检查取消标志
-            if self.cancel_flags[task_id].is_set():
-                break
-
-            try:
-                # 提取subject_id和task_id
-                filename = file_path.stem  # 去掉.csv后缀
-                parts = filename.replace('_calibrated', '').split('_')
-
-                if len(parts) >= 2:
-                    task_id_str = parts[-1]
-                    subject_id = '_'.join(parts[:-1])
-                else:
-                    logger.warning(f"无法解析文件名: {filename}")
-                    continue
-
-                # RQA分析
-                rqa_result = service.analyzer.analyze_single_file(str(file_path), params)
-
-                # 添加到结果
-                result_row = {
-                    'subject_id': subject_id,
-                    'task_id': task_id_str,
-                    **rqa_result
-                }
-                results.append(result_row)
-
-            except Exception as e:
-                logger.error(f"处理文件失败: {file_path} - {e}")
-                # 继续处理下一个文件，不中断整个batch
-
-        return results
 
     def _save_task_state(self, task_id: str):
         """保存任务状态到磁盘"""
@@ -497,7 +457,7 @@ class RQATaskExecutor:
                 return False
 
             # 提交到线程池
-            future = self.executor.submit(
+            future = self.thread_executor.submit(
                 self._execute_batch_task,
                 task_id,
                 service,
@@ -536,24 +496,35 @@ class RQATaskExecutor:
         Returns:
             是否成功取消
         """
-        if task_id not in self.cancel_flags:
+        if task_id not in self.task_status:
+            return False
+
+        # 检查任务状态
+        current_status = self.task_status[task_id].status
+
+        # 已经是终止状态的任务无法取消
+        if current_status in ['completed', 'cancelled', 'failed']:
             return False
 
         # 设置取消标志
-        self.cancel_flags[task_id].set()
+        if task_id in self.cancel_flags:
+            self.cancel_flags[task_id].set()
 
-        # 尝试取消Future
+        # 尝试取消Future(如果任务正在运行)
         if task_id in self.active_tasks:
             future = self.active_tasks[task_id]
-            cancelled = future.cancel()
+            future.cancel()
 
-            if cancelled or self.task_status[task_id].status == 'running':
-                self.task_status[task_id].status = 'cancelled'
-                self.task_status[task_id].end_time = datetime.now().isoformat()
-                logger.info(f"任务已取消: {task_id}")
-                return True
+        # 更新任务状态
+        with self.progress_lock:
+            self.task_status[task_id].status = 'cancelled'
+            self.task_status[task_id].end_time = datetime.now().isoformat()
 
-        return False
+        # 保存状态(在锁外部调用,避免死锁)
+        self._save_task_state(task_id)
+
+        logger.info(f"任务已取消: {task_id}, 原状态={current_status}")
+        return True
 
     def get_all_tasks(self) -> List[Dict]:
         """

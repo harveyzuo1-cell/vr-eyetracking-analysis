@@ -8,12 +8,14 @@ import {
   SettingOutlined,
   ThunderboltOutlined,
   FileSearchOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  RocketOutlined
 } from '@ant-design/icons';
 import ParamConfigPanel from './ParamConfigPanel';
 import BatchExecutionPanel from './BatchExecutionPanel';
 import ResultsViewer from './ResultsViewer';
 import VisualizationPanel from './VisualizationPanel';
+import AdvancedAnalysisPanel from './AdvancedAnalysisPanel';
 
 const RQAAnalysis = () => {
   const [activeTab, setActiveTab] = useState('1');
@@ -58,6 +60,16 @@ const RQAAnalysis = () => {
         </span>
       ),
       children: <VisualizationPanel />
+    },
+    {
+      key: '5',
+      label: (
+        <span>
+          <RocketOutlined />
+          高级分析
+        </span>
+      ),
+      children: <AdvancedAnalysisPanel />
     }
   ], []);
 

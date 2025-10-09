@@ -757,3 +757,388 @@ def get_batch_list():
         'batches': batches,
         'total_count': len(batches)
     })
+
+
+# ========== 高级分析API (新增) ==========
+
+@m05_bp.route('/advanced/evaluate-params', methods=['POST'])
+@handle_api_errors
+def evaluate_parameters():
+    """
+    参数性能评估 - 自动评估所有参数组合的性能
+
+    Request Body:
+    {
+        "metric": "f_stat_mean"  // 可选: f_stat_mean, significant_count, f_stat_max
+    }
+
+    Response:
+    {
+        "success": true,
+        "results": [
+            {
+                "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
+                "f_stat_mean": 42.3,
+                "f_stat_max": 85.6,
+                "significant_count": 10,
+                "significant_ratio": 0.4
+            },
+            ...
+        ],
+        "total_evaluated": 955
+    }
+    """
+    from .param_evaluator import ParamEvaluator
+    from config.settings import Config
+    from pathlib import Path
+
+    data = request.get_json() or {}
+    metric = data.get('metric', 'f_stat_mean')
+
+    data_root = Path(Config.DATA_ROOT)
+    results_dir = data_root / '05_rqa_analysis' / 'results'
+
+    evaluator = ParamEvaluator(results_dir)
+    results = evaluator.evaluate_all_params(metric=metric)
+
+    return jsonify({
+        'success': True,
+        'results': results,
+        'total_evaluated': len(results)
+    })
+
+
+@m05_bp.route('/advanced/task-analysis', methods=['POST'])
+@validate_params('params', 'task_id')
+@handle_api_errors
+def task_layer_analysis():
+    """
+    任务分层分析 - 对指定任务进行独立统计分析
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
+        "task_id": "q1",
+        "groups": ["control", "mci", "ad"]  // 可选
+    }
+
+    Response:
+    {
+        "success": true,
+        "statistics": [
+            {
+                "feature": "x_RR",
+                "control": {"mean": 0.45, "std": 0.12},
+                "mci": {"mean": 0.42, "std": 0.15},
+                "ad": {"mean": 0.38, "std": 0.18},
+                "f_stat": 3.45,
+                "p_value": 0.034
+            },
+            ...
+        ]
+    }
+    """
+    from .task_analyzer import TaskAnalyzer
+    from config.settings import get_config
+
+    data = request.get_json()
+    params = data['params']
+    task_id = data['task_id']
+    groups = data.get('groups', ['control', 'mci', 'ad'])
+
+    from config.settings import Config
+    from pathlib import Path
+
+    data_root = Path(Config.DATA_ROOT)
+    results_dir = data_root / '05_rqa_analysis' / 'results'
+
+    analyzer = TaskAnalyzer(results_dir)
+    result = analyzer.analyze_single_task(params, task_id, groups)
+
+    return jsonify({
+        'success': True,
+        'task_id': result['task_id'],
+        'sample_size': result['sample_size'],
+        'statistics': result['statistics']
+    })
+
+
+@m05_bp.route('/advanced/task-compare', methods=['POST'])
+@validate_params('params', 'tasks')
+@handle_api_errors
+def task_comparison():
+    """
+    任务对比分析 - 对比多个任务的RQA特征差异
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
+        "tasks": ["q1", "q2", "q3", "q4", "q5"]
+    }
+
+    Response:
+    {
+        "success": true,
+        "comparison": {
+            "params": {...},
+            "tasks": ["q1", "q2", ...],
+            "significant_features": ["x_RR", "combined_DET", ...],
+            "significant_count": 8,
+            "comparison_details": [...]
+        }
+    }
+    """
+    from .task_analyzer import TaskAnalyzer
+    from config.settings import get_config
+
+    data = request.get_json()
+    params = data['params']
+    tasks = data['tasks']
+
+    from config.settings import Config
+    from pathlib import Path
+
+    data_root = Path(Config.DATA_ROOT)
+    results_dir = data_root / '05_rqa_analysis' / 'results'
+
+    analyzer = TaskAnalyzer(results_dir)
+    comparison = analyzer.compare_tasks(params, tasks)
+
+    return jsonify({
+        'success': True,
+        'comparison': comparison
+    })
+
+
+# ========== 个体查询API (新增) ==========
+
+@m05_bp.route('/advanced/subjects/list', methods=['POST'])
+@validate_params('params')
+@handle_api_errors
+def list_subjects():
+    """
+    获取所有受试者列表
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2}
+    }
+
+    Response:
+    {
+        "success": true,
+        "subjects": [
+            {"subject_id": "control_legacy_1", "group": "control"},
+            ...
+        ]
+    }
+    """
+    from .individual_analyzer import IndividualAnalyzer
+    from config.settings import get_config
+
+    data = request.get_json()
+    params = data['params']
+
+    from config.settings import Config
+    from pathlib import Path
+
+    data_root = Path(Config.DATA_ROOT)
+    results_dir = data_root / '05_rqa_analysis' / 'results'
+
+    analyzer = IndividualAnalyzer(results_dir)
+    subjects = analyzer.get_all_subjects(params)
+
+    return jsonify({
+        'success': True,
+        'subjects': subjects,
+        'total_count': len(subjects)
+    })
+
+
+@m05_bp.route('/advanced/individual/profile', methods=['POST'])
+@validate_params('subject_id', 'params')
+@handle_api_errors
+def get_individual_profile():
+    """
+    获取个体RQA档案
+
+    Request Body:
+    {
+        "subject_id": "control_legacy_1",
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2}
+    }
+
+    Response:
+    {
+        "success": true,
+        "profile": {
+            "subject_id": "control_legacy_1",
+            "group": "control",
+            "task_count": 5,
+            "task_trajectories": {...},
+            "individual_stats": {...}
+        }
+    }
+    """
+    from .individual_analyzer import IndividualAnalyzer
+    from config.settings import get_config
+
+    data = request.get_json()
+    subject_id = data['subject_id']
+    params = data['params']
+
+    from config.settings import Config
+    from pathlib import Path
+
+    data_root = Path(Config.DATA_ROOT)
+    results_dir = data_root / '05_rqa_analysis' / 'results'
+
+    analyzer = IndividualAnalyzer(results_dir)
+    profile = analyzer.get_individual_profile(subject_id, params)
+
+    return jsonify({
+        'success': True,
+        'profile': profile
+    })
+
+
+@m05_bp.route('/advanced/individual/compare-to-group', methods=['POST'])
+@validate_params('subject_id', 'params')
+@handle_api_errors
+def compare_individual_to_group():
+    """
+    个体vs组平均对比
+
+    Request Body:
+    {
+        "subject_id": "control_legacy_1",
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2}
+    }
+
+    Response:
+    {
+        "success": true,
+        "comparison": {
+            "subject_id": "control_legacy_1",
+            "group": "control",
+            "outlier_count": 3,
+            "total_features": 25,
+            "comparison": [...]
+        }
+    }
+    """
+    from .individual_analyzer import IndividualAnalyzer
+    from config.settings import get_config
+
+    data = request.get_json()
+    subject_id = data['subject_id']
+    params = data['params']
+
+    from config.settings import Config
+    from pathlib import Path
+
+    data_root = Path(Config.DATA_ROOT)
+    results_dir = data_root / '05_rqa_analysis' / 'results'
+
+    analyzer = IndividualAnalyzer(results_dir)
+    comparison = analyzer.compare_to_group(subject_id, params)
+
+    return jsonify({
+        'success': True,
+        'comparison': comparison
+    })
+
+
+@m05_bp.route('/advanced/individual/risk-assessment', methods=['POST'])
+@validate_params('subject_id', 'params')
+@handle_api_errors
+def assess_individual_risk():
+    """
+    个体认知风险评估
+
+    Request Body:
+    {
+        "subject_id": "control_legacy_1",
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2}
+    }
+
+    Response:
+    {
+        "success": true,
+        "assessment": {
+            "subject_id": "control_legacy_1",
+            "group": "control",
+            "risk_score": 25.5,
+            "risk_level": "low",
+            "risk_label": "低风险",
+            "risk_factors": [...],
+            "recommendation": "..."
+        }
+    }
+    """
+    from .individual_analyzer import IndividualAnalyzer
+    from config.settings import get_config
+
+    data = request.get_json()
+    subject_id = data['subject_id']
+    params = data['params']
+
+    from config.settings import Config
+    from pathlib import Path
+
+    data_root = Path(Config.DATA_ROOT)
+    results_dir = data_root / '05_rqa_analysis' / 'results'
+
+    analyzer = IndividualAnalyzer(results_dir)
+    assessment = analyzer.assess_cognitive_risk(subject_id, params)
+
+    return jsonify({
+        'success': True,
+        'assessment': assessment
+    })
+
+
+@m05_bp.route('/advanced/individual/task-progression', methods=['POST'])
+@validate_params('subject_id', 'params')
+@handle_api_errors
+def analyze_task_progression():
+    """
+    个体任务进程分析
+
+    Request Body:
+    {
+        "subject_id": "control_legacy_1",
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2}
+    }
+
+    Response:
+    {
+        "success": true,
+        "progression": {
+            "subject_id": "control_legacy_1",
+            "group": "control",
+            "trends": {...},
+            "interpretation": "..."
+        }
+    }
+    """
+    from .individual_analyzer import IndividualAnalyzer
+    from config.settings import get_config
+
+    data = request.get_json()
+    subject_id = data['subject_id']
+    params = data['params']
+
+    from config.settings import Config
+    from pathlib import Path
+
+    data_root = Path(Config.DATA_ROOT)
+    results_dir = data_root / '05_rqa_analysis' / 'results'
+
+    analyzer = IndividualAnalyzer(results_dir)
+    progression = analyzer.get_task_progression_analysis(subject_id, params)
+
+    return jsonify({
+        'success': True,
+        'progression': progression
+    })
