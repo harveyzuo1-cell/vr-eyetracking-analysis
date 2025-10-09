@@ -2,7 +2,8 @@
 Module05 RQA分析API
 """
 
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, request, jsonify, send_file, Response
+from typing import Dict, Tuple, Union
 import base64
 from pathlib import Path
 
@@ -52,7 +53,7 @@ def get_task_executor() -> RQATaskExecutor:
 
 
 @m05_bp.route('/health', methods=['GET'])
-def health_check():
+def health_check() -> Response:
     """健康检查"""
     return jsonify({'status': 'ok', 'module': 'module05_rqa_analysis'})
 
@@ -60,7 +61,7 @@ def health_check():
 @m05_bp.route('/params/generate', methods=['POST'])
 @validate_params('m_range', 'tau_range', 'eps_range', 'lmin_range')
 @handle_api_errors
-def generate_param_combinations():
+def generate_param_combinations() -> Response:
     """
     生成参数组合空间
 
@@ -98,7 +99,7 @@ def generate_param_combinations():
 
 @m05_bp.route('/params/history', methods=['GET'])
 @handle_api_errors
-def get_param_history():
+def get_param_history() -> Response:
     """
     获取参数历史记录和缓存的参数组合
 
@@ -128,7 +129,7 @@ def get_param_history():
 @m05_bp.route('/analyze/single', methods=['POST'])
 @validate_params('params')
 @handle_api_errors
-def analyze_single():
+def analyze_single() -> Union[Response, Tuple[Response, int]]:
     """
     分析单个参数组合（执行完整的5步流水线）
 
@@ -175,7 +176,7 @@ def analyze_single():
 @m05_bp.route('/analyze/batch', methods=['POST'])
 @handle_api_errors
 @monitor_performance
-def analyze_batch():
+def analyze_batch() -> Union[Response, Tuple[Response, int]]:
     """
     批量RQA分析（多个参数组合）
 
@@ -253,7 +254,7 @@ def analyze_batch():
 
 @m05_bp.route('/results/list', methods=['GET'])
 @handle_api_errors
-def list_results():
+def list_results() -> Response:
     """
     列出所有分析结果
 
@@ -296,7 +297,7 @@ def list_results():
 @m05_bp.route('/visualize/recurrence-plot', methods=['POST'])
 @validate_params('subject_id', 'task_id', 'params')
 @handle_api_errors
-def generate_recurrence_plot():
+def generate_recurrence_plot() -> Union[Response, Tuple[Response, int]]:
     """
     生成递归图
 
@@ -414,7 +415,7 @@ def generate_recurrence_plot():
 @m05_bp.route('/tasks/submit', methods=['POST'])
 @validate_params('param_combinations')
 @handle_api_errors
-def submit_async_task():
+def submit_async_task() -> Union[Response, Tuple[Response, int]]:
     """
     提交异步批量RQA任务
 
@@ -477,7 +478,7 @@ def submit_async_task():
 
 @m05_bp.route('/tasks/status/<task_id>', methods=['GET'])
 @handle_api_errors
-def get_task_status(task_id):
+def get_task_status(task_id: str) -> Union[Response, Tuple[Response, int]]:
     """
     获取任务状态
 
@@ -616,7 +617,7 @@ def resume_task(task_id):
 
 @m05_bp.route('/visualizations/<signature>/<filename>', methods=['GET'])
 @handle_api_errors
-def get_visualization(signature, filename):
+def get_visualization(signature: str, filename: str) -> Union[Response, Tuple[Response, int]]:
     """
     获取可视化图片文件
 
