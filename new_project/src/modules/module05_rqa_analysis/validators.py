@@ -105,6 +105,10 @@ class RQADataValidator:
         Returns:
             标准化后的DataFrame
         """
+        # 处理空DataFrame
+        if df.empty or len(df.columns) == 0:
+            return df
+
         # 1. 列名标准化为小写
         df.columns = df.columns.str.lower()
 
