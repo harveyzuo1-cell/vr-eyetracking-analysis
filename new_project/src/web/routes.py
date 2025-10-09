@@ -86,7 +86,11 @@ def register_routes(app: Flask):
 
     # 注册Module05: RQA递归量化分析
     from src.modules.module05_rqa_analysis.api import m05_bp
+    from src.modules.module05_rqa_analysis.api_advanced import m05_advanced_bp
+    from src.modules.module05_rqa_analysis.api_individual import m05_individual_bp
     app.register_blueprint(m05_bp)
+    app.register_blueprint(m05_advanced_bp)
+    app.register_blueprint(m05_individual_bp)
 
     # 静态文件服务: 背景图片
     @app.route('/static/background_images/<version>/<filename>')
