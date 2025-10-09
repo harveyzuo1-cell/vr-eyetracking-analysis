@@ -4,125 +4,173 @@
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Card, Table, Button, message, Space, Tag, Descriptions, Drawer
+  Card, Table, Button, message, Space, Select, Form, Alert
 } from 'antd';
-import { FileSearchOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
-import PropTypes from 'prop-types';
+import { FileSearchOutlined, ReloadOutlined, FolderOpenOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
+const { Option } = Select;
+
 const ResultsViewer = () => {
-  const [tasks, setTasks] = useState([]);
+  const [results, setResults] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState(null);
 
-  const loadTasks = useCallback(async () => {
+  // 筛选条件
+  const [filters, setFilters] = useState({
+    m: null,
+    tau: null,
+    eps: null,
+    lmin: null
+  });
+
+  const loadBatches = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await axios.get('/api/m05/tasks/list');
-
+      const response = await axios.get('/api/m05/batches/list');
       if (response.data.success) {
-        setTasks(response.data.tasks);
-      } else {
-        message.error('加载任务列表失败');
+        setBatches(response.data.batches);
       }
     } catch (error) {
-      console.error('加载任务列表失败:', error);
-      message.error('加载任务列表失败: ' + (error.response?.data?.error || error.message));
+      console.error('加载批次列表失败:', error);
+    }
+  }, []);
+
+  const loadResults = useCallback(async (taskId = null) => {
+    try {
+      setLoading(true);
+      const url = taskId
+        ? `/api/m05/results/completed?task_id=${encodeURIComponent(taskId)}`
+        : '/api/m05/results/completed';
+
+      const response = await axios.get(url);
+
+      if (response.data.success) {
+        setResults(response.data.completed_results);
+      } else {
+        message.error('加载结果列表失败');
+      }
+    } catch (error) {
+      console.error('加载结果列表失败:', error);
+      message.error('加载结果列表失败: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+    loadBatches();
+    loadResults();
+  }, [loadBatches, loadResults]);
 
-  const getStatusTag = useCallback((status) => {
-    const statusMap = {
-      'pending': { color: 'default', text: '等待中' },
-      'running': { color: 'processing', text: '运行中' },
-      'completed': { color: 'success', text: '已完成' },
-      'failed': { color: 'error', text: '失败' },
-      'cancelled': { color: 'warning', text: '已取消' }
+  const handleBatchChange = useCallback((taskId) => {
+    setSelectedBatch(taskId);
+    loadResults(taskId);
+  }, [loadResults]);
+
+  const handleRefresh = useCallback(() => {
+    loadBatches();
+    loadResults(selectedBatch);
+  }, [loadBatches, loadResults, selectedBatch]);
+
+  // 获取参数筛选范围
+  const paramRanges = useMemo(() => {
+    if (results.length === 0) return { m: [], tau: [], eps: [], lmin: [] };
+
+    return {
+      m: [...new Set(results.map(r => r.m))].sort((a, b) => a - b),
+      tau: [...new Set(results.map(r => r.tau))].sort((a, b) => a - b),
+      eps: [...new Set(results.map(r => r.eps))].sort((a, b) => a - b),
+      lmin: [...new Set(results.map(r => r.lmin))].sort((a, b) => a - b)
     };
-    const config = statusMap[status] || statusMap['pending'];
-    return <Tag color={config.color}>{config.text}</Tag>;
-  }, []);
+  }, [results]);
 
-  const handleViewDetails = useCallback((task) => {
-    setSelectedTask(task);
-    setDrawerVisible(true);
+  // 筛选后的结果
+  const filteredResults = useMemo(() => {
+    return results.filter(result => {
+      if (filters.m !== null && result.m !== filters.m) return false;
+      if (filters.tau !== null && result.tau !== filters.tau) return false;
+      if (filters.eps !== null && Math.abs(result.eps - filters.eps) > 0.0001) return false;
+      if (filters.lmin !== null && result.lmin !== filters.lmin) return false;
+      return true;
+    });
+  }, [results, filters]);
+
+  const handleOpenResultFolder = useCallback((signature) => {
+    message.info(`结果目录: data/05_rqa_analysis/results/${signature}`);
   }, []);
 
   const columns = useMemo(() => [
     {
-      title: '任务ID',
-      dataIndex: 'task_id',
-      key: 'task_id',
-      width: 200
+      title: '参数签名',
+      dataIndex: 'signature',
+      key: 'signature',
+      width: 250,
+      fixed: 'left'
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
+      title: 'm',
+      dataIndex: 'm',
+      key: 'm',
+      width: 80,
+      sorter: (a, b) => a.m - b.m
+    },
+    {
+      title: 'τ',
+      dataIndex: 'tau',
+      key: 'tau',
+      width: 80,
+      sorter: (a, b) => a.tau - b.tau
+    },
+    {
+      title: 'ε',
+      dataIndex: 'eps',
+      key: 'eps',
       width: 100,
-      render: (status) => getStatusTag(status)
+      render: (val) => val.toFixed(3),
+      sorter: (a, b) => a.eps - b.eps
     },
     {
-      title: '进度',
-      dataIndex: 'progress',
-      key: 'progress',
-      width: 120,
-      render: (progress) => `${Number(progress || 0).toFixed(1)}%`
+      title: 'lmin',
+      dataIndex: 'lmin',
+      key: 'lmin',
+      width: 80,
+      sorter: (a, b) => a.lmin - b.lmin
     },
     {
-      title: '已处理/总文件数',
-      key: 'files',
-      width: 150,
-      render: (_, record) => `${record.processed_files || 0} / ${record.total_files || 0}`
-    },
-    {
-      title: '失败文件',
-      dataIndex: 'failed_files',
-      key: 'failed_files',
-      width: 100,
-      render: (failed) => (
-        <span style={{ color: failed > 0 ? '#cf1322' : '#3f8600' }}>
-          {failed || 0}
-        </span>
-      )
-    },
-    {
-      title: '开始时间',
-      dataIndex: 'start_time',
-      key: 'start_time',
+      title: '创建时间',
+      dataIndex: 'creation_time',
+      key: 'creation_time',
       width: 180,
       render: (time) => time ? new Date(time).toLocaleString('zh-CN') : '-'
     },
     {
-      title: '结束时间',
-      dataIndex: 'end_time',
-      key: 'end_time',
+      title: '最后更新',
+      dataIndex: 'last_updated',
+      key: 'last_updated',
       width: 180,
-      render: (time) => time ? new Date(time).toLocaleString('zh-CN') : '-'
+      render: (time) => time ? new Date(time).toLocaleString('zh-CN') : '-',
+      sorter: (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
     },
     {
       title: '操作',
-      key: 'action',
+      key: 'actions',
       width: 120,
       fixed: 'right',
       render: (_, record) => (
-        <Button
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewDetails(record)}
-        >
-          详情
-        </Button>
+        <Space>
+          <Button
+            type="link"
+            size="small"
+            icon={<FolderOpenOutlined />}
+            onClick={() => handleOpenResultFolder(record.signature)}
+          >
+            查看
+          </Button>
+        </Space>
       )
     }
-  ], [getStatusTag, handleViewDetails]);
+  ], [handleOpenResultFolder]);
 
   return (
     <div>
@@ -130,90 +178,130 @@ const ResultsViewer = () => {
         title={
           <Space>
             <FileSearchOutlined />
-            任务历史
+            已完成的RQA分析结果
+            <Select
+              style={{ width: 400, marginLeft: 16 }}
+              placeholder="选择批次 (默认显示全部)"
+              allowClear
+              value={selectedBatch}
+              onChange={handleBatchChange}
+            >
+              {batches.map(batch => (
+                <Option key={batch.task_id} value={batch.task_id}>
+                  {batch.display_name}
+                </Option>
+              ))}
+            </Select>
           </Space>
         }
         extra={
           <Button
             icon={<ReloadOutlined />}
-            onClick={loadTasks}
+            onClick={handleRefresh}
             loading={loading}
           >
             刷新
           </Button>
         }
+        style={{ marginBottom: 16 }}
       >
+        {selectedBatch && (
+          <Alert
+            message={`当前批次: ${batches.find(b => b.task_id === selectedBatch)?.display_name || selectedBatch}`}
+            type="info"
+            closable
+            onClose={() => handleBatchChange(null)}
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
+        <Form layout="inline" style={{ marginBottom: 16 }}>
+          <Form.Item label="嵌入维度 m">
+            <Select
+              style={{ width: 120 }}
+              placeholder="全部"
+              allowClear
+              value={filters.m}
+              onChange={(value) => setFilters({ ...filters, m: value })}
+            >
+              {paramRanges.m.map(val => (
+                <Option key={val} value={val}>{val}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="时间延迟 τ">
+            <Select
+              style={{ width: 120 }}
+              placeholder="全部"
+              allowClear
+              value={filters.tau}
+              onChange={(value) => setFilters({ ...filters, tau: value })}
+            >
+              {paramRanges.tau.map(val => (
+                <Option key={val} value={val}>{val}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="递归阈值 ε">
+            <Select
+              style={{ width: 120 }}
+              placeholder="全部"
+              allowClear
+              value={filters.eps}
+              onChange={(value) => setFilters({ ...filters, eps: value })}
+            >
+              {paramRanges.eps.map(val => (
+                <Option key={val} value={val}>{val.toFixed(3)}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="最小线长 lmin">
+            <Select
+              style={{ width: 120 }}
+              placeholder="全部"
+              allowClear
+              value={filters.lmin}
+              onChange={(value) => setFilters({ ...filters, lmin: value })}
+            >
+              {paramRanges.lmin.map(val => (
+                <Option key={val} value={val}>{val}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item>
+            <Space>
+              <span style={{ color: '#666', fontSize: 13 }}>
+                筛选结果: {filteredResults.length} / {results.length}
+              </span>
+              {(filters.m || filters.tau || filters.eps || filters.lmin) && (
+                <Button
+                  size="small"
+                  onClick={() => setFilters({ m: null, tau: null, eps: null, lmin: null })}
+                >
+                  清空筛选
+                </Button>
+              )}
+            </Space>
+          </Form.Item>
+        </Form>
+
         <Table
           columns={columns}
-          dataSource={tasks}
-          rowKey="task_id"
+          dataSource={filteredResults}
+          rowKey="signature"
           loading={loading}
           pagination={{
-            pageSize: 10,
+            pageSize: 20,
             showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 个任务`
+            showTotal: (total) => `共 ${total} 条结果`
           }}
           scroll={{ x: 1200 }}
         />
       </Card>
-
-      <Drawer
-        title="任务详情"
-        placement="right"
-        width={600}
-        open={drawerVisible}
-        onClose={() => setDrawerVisible(false)}
-      >
-        {selectedTask && (
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <Descriptions title="基本信息" bordered column={1}>
-              <Descriptions.Item label="任务ID">{selectedTask.task_id}</Descriptions.Item>
-              <Descriptions.Item label="状态">{getStatusTag(selectedTask.status)}</Descriptions.Item>
-              <Descriptions.Item label="进度">{Number(selectedTask.progress || 0).toFixed(2)}%</Descriptions.Item>
-              <Descriptions.Item label="当前步骤">Step {selectedTask.current_step}</Descriptions.Item>
-            </Descriptions>
-
-            <Descriptions title="文件处理统计" bordered column={1}>
-              <Descriptions.Item label="总文件数">{selectedTask.total_files || 0}</Descriptions.Item>
-              <Descriptions.Item label="已处理文件">{selectedTask.processed_files || 0}</Descriptions.Item>
-              <Descriptions.Item label="失败文件">
-                <span style={{ color: selectedTask.failed_files > 0 ? '#cf1322' : '#3f8600' }}>
-                  {selectedTask.failed_files || 0}
-                </span>
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Descriptions title="时间信息" bordered column={1}>
-              <Descriptions.Item label="开始时间">
-                {selectedTask.start_time ? new Date(selectedTask.start_time).toLocaleString('zh-CN') : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="结束时间">
-                {selectedTask.end_time ? new Date(selectedTask.end_time).toLocaleString('zh-CN') : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="预计剩余时间">
-                {selectedTask.eta_seconds ? `${selectedTask.eta_seconds} 秒` : '-'}
-              </Descriptions.Item>
-            </Descriptions>
-
-            {selectedTask.current_param && (
-              <Descriptions title="当前参数" bordered column={1}>
-                <Descriptions.Item label="嵌入维度 (m)">{selectedTask.current_param.m}</Descriptions.Item>
-                <Descriptions.Item label="时间延迟 (τ)">{selectedTask.current_param.tau}</Descriptions.Item>
-                <Descriptions.Item label="递归阈值 (ε)">{selectedTask.current_param.eps}</Descriptions.Item>
-                <Descriptions.Item label="最小线长 (lmin)">{selectedTask.current_param.lmin}</Descriptions.Item>
-              </Descriptions>
-            )}
-
-            {selectedTask.error_message && (
-              <Card title="错误信息" size="small" style={{ borderColor: '#ff4d4f' }}>
-                <pre style={{ color: '#cf1322', whiteSpace: 'pre-wrap' }}>
-                  {selectedTask.error_message}
-                </pre>
-              </Card>
-            )}
-          </Space>
-        )}
-      </Drawer>
     </div>
   );
 };

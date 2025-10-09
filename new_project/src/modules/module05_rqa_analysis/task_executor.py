@@ -6,6 +6,7 @@ RQA任务执行器 - CPU多线程并行处理
 
 import threading
 import time
+import json
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from typing import Dict, List, Callable, Optional
 from pathlib import Path
@@ -26,11 +27,15 @@ class TaskStatus:
     processed_files: int
     failed_files: int
     current_step: int  # 1-5
-    status: str  # 'pending', 'running', 'completed', 'failed', 'cancelled'
+    status: str  # 'pending', 'running', 'paused', 'completed', 'failed', 'cancelled'
     start_time: str
     end_time: Optional[str] = None
     error_message: Optional[str] = None
     current_param: Optional[Dict] = None
+    # 新增断点续传字段
+    current_param_index: int = 0  # 当前处理到第几个参数组合
+    param_combinations: Optional[List[Dict]] = None  # 参数组合列表
+    groups: Optional[List[str]] = None  # 分组列表
 
     @property
     def progress(self) -> float:
@@ -60,12 +65,13 @@ class TaskStatus:
 class RQATaskExecutor:
     """RQA任务执行器 - CPU多线程"""
 
-    def __init__(self, max_workers: int = None):
+    def __init__(self, max_workers: int = None, tasks_dir: Path = None):
         """
         初始化任务执行器
 
         Args:
             max_workers: 最大线程数，默认为CPU核心数
+            tasks_dir: 任务状态保存目录
         """
         self.max_workers = max_workers or cpu_count()
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
@@ -77,10 +83,18 @@ class RQATaskExecutor:
         # 线程安全的进度计数器
         self.progress_lock = threading.Lock()
 
-        # 任务取消标志
+        # 任务取消和暂停标志
         self.cancel_flags: Dict[str, threading.Event] = {}
+        self.pause_flags: Dict[str, threading.Event] = {}
 
-        logger.info(f"RQATaskExecutor初始化: max_workers={self.max_workers}")
+        # 任务状态持久化目录
+        self.tasks_dir = tasks_dir or Path(__file__).parent.parent.parent.parent / 'data' / '05_rqa_analysis' / 'tasks'
+        self.tasks_dir.mkdir(parents=True, exist_ok=True)
+
+        # 在初始化时恢复未完成的任务
+        self._restore_tasks()
+
+        logger.info(f"RQATaskExecutor初始化: max_workers={self.max_workers}, tasks_dir={self.tasks_dir}")
 
     def submit_batch_task(self, task_id: str, service,
                          param_combinations: List[Dict],
@@ -116,11 +130,15 @@ class RQATaskExecutor:
             current_step=1,
             status='pending',
             start_time=datetime.now().isoformat(),
-            current_param=param_combinations[0] if param_combinations else None
+            current_param=param_combinations[0] if param_combinations else None,
+            current_param_index=0,
+            param_combinations=param_combinations,
+            groups=groups
         )
 
-        # 创建取消标志
+        # 创建取消和暂停标志
         self.cancel_flags[task_id] = threading.Event()
+        self.pause_flags[task_id] = threading.Event()
 
         # 提交到线程池
         future = self.executor.submit(
@@ -137,6 +155,7 @@ class RQATaskExecutor:
 
         self.active_tasks[task_id] = future
         self.task_status[task_id].status = 'running'
+        self._save_task_state(task_id)
 
         logger.info(f"任务已提交: {task_id}, 总文件数={total_files}")
 
@@ -155,19 +174,34 @@ class RQATaskExecutor:
         4. 更新进度
         """
         try:
+            # 设置当前批次task_id到service（用于metadata记录）
+            service.current_task_id = task_id
+            service.current_data_version = 'v1'  # 目前默认V1数据
+
             for param_idx, params in enumerate(param_combinations):
                 # 检查是否取消
                 if self.cancel_flags[task_id].is_set():
                     logger.info(f"任务已取消: {task_id}")
                     self.task_status[task_id].status = 'cancelled'
                     self.task_status[task_id].end_time = datetime.now().isoformat()
+                    self._save_task_state(task_id)
+                    return
+
+                # 检查是否暂停
+                if self.pause_flags[task_id].is_set():
+                    logger.info(f"任务已暂停: {task_id}")
+                    with self.progress_lock:
+                        self.task_status[task_id].status = 'paused'
+                        self.task_status[task_id].current_param_index = param_idx
+                        self._save_task_state(task_id)
                     return
 
                 logger.info(f"任务 {task_id}: 处理参数组合 {param_idx+1}/{len(param_combinations)}")
 
-                # 更新当前参数
+                # 更新当前参数和索引
                 with self.progress_lock:
                     self.task_status[task_id].current_param = params
+                    self.task_status[task_id].current_param_index = param_idx
 
                 # Step 1: RQA计算（并行处理文件）
                 self.task_status[task_id].current_step = 1
@@ -210,11 +244,14 @@ class RQATaskExecutor:
                     continue
 
                 logger.info(f"参数组合完成: {params}")
+                # 每完成一个参数组合就保存一次状态
+                self._save_task_state(task_id)
 
             # 标记完成
             with self.progress_lock:
                 self.task_status[task_id].status = 'completed'
                 self.task_status[task_id].end_time = datetime.now().isoformat()
+                self._save_task_state(task_id)
 
             logger.info(f"任务完成: {task_id}")
 
@@ -224,6 +261,7 @@ class RQATaskExecutor:
                 self.task_status[task_id].status = 'failed'
                 self.task_status[task_id].error_message = str(e)
                 self.task_status[task_id].end_time = datetime.now().isoformat()
+                self._save_task_state(task_id)
 
     def _execute_step1_parallel(self, task_id: str, service,
                                 params: Dict, groups: List[str]) -> Dict:
@@ -285,10 +323,15 @@ class RQATaskExecutor:
 
         # 保存元数据
         total_processed = sum(len(r) for r in results.values())
-        service.save_param_metadata(params, 1, {
-            'files_processed': total_processed,
-            'files_failed': self.task_status[task_id].failed_files
-        })
+        service.save_param_metadata(
+            params, 1,
+            {
+                'files_processed': total_processed,
+                'files_failed': self.task_status[task_id].failed_files
+            },
+            task_id=task_id,
+            data_version='v1'  # 目前默认V1数据
+        )
 
         return {
             'success': True,
@@ -344,6 +387,129 @@ class RQATaskExecutor:
                 # 继续处理下一个文件，不中断整个batch
 
         return results
+
+    def _save_task_state(self, task_id: str):
+        """保存任务状态到磁盘"""
+        try:
+            task_file = self.tasks_dir / f"{task_id}.json"
+            with self.progress_lock:
+                status_dict = self.task_status[task_id].to_dict()
+
+            with open(task_file, 'w', encoding='utf-8') as f:
+                json.dump(status_dict, f, ensure_ascii=False, indent=2)
+
+            logger.debug(f"任务状态已保存: {task_id}")
+        except Exception as e:
+            logger.error(f"保存任务状态失败: {task_id} - {e}")
+
+    def _restore_tasks(self):
+        """从磁盘恢复未完成的任务"""
+        try:
+            for task_file in self.tasks_dir.glob("*.json"):
+                try:
+                    with open(task_file, 'r', encoding='utf-8') as f:
+                        status_dict = json.load(f)
+
+                    # 只恢复未完成的任务
+                    if status_dict['status'] in ['running', 'paused', 'pending']:
+                        # 如果是running状态，改为paused（因为服务重启了）
+                        if status_dict['status'] == 'running':
+                            status_dict['status'] = 'paused'
+
+                        # 重建TaskStatus对象
+                        task_status = TaskStatus(
+                            task_id=status_dict['task_id'],
+                            total_files=status_dict['total_files'],
+                            processed_files=status_dict['processed_files'],
+                            failed_files=status_dict['failed_files'],
+                            current_step=status_dict['current_step'],
+                            status=status_dict['status'],
+                            start_time=status_dict['start_time'],
+                            end_time=status_dict.get('end_time'),
+                            error_message=status_dict.get('error_message'),
+                            current_param=status_dict.get('current_param'),
+                            current_param_index=status_dict.get('current_param_index', 0),
+                            param_combinations=status_dict.get('param_combinations'),
+                            groups=status_dict.get('groups')
+                        )
+
+                        self.task_status[task_status.task_id] = task_status
+                        self.cancel_flags[task_status.task_id] = threading.Event()
+                        self.pause_flags[task_status.task_id] = threading.Event()
+                        # 如果是paused状态，设置暂停标志
+                        if task_status.status == 'paused':
+                            self.pause_flags[task_status.task_id].set()
+
+                        logger.info(f"已恢复任务: {task_status.task_id}, 状态={task_status.status}")
+
+                except Exception as e:
+                    logger.error(f"恢复任务失败: {task_file} - {e}")
+
+        except Exception as e:
+            logger.error(f"恢复任务列表失败: {e}")
+
+    def pause_task(self, task_id: str) -> bool:
+        """暂停任务"""
+        if task_id not in self.task_status:
+            logger.warning(f"任务不存在: {task_id}")
+            return False
+
+        with self.progress_lock:
+            if self.task_status[task_id].status != 'running':
+                logger.warning(f"任务不在运行中，无法暂停: {task_id}, 当前状态={self.task_status[task_id].status}")
+                return False
+
+            self.pause_flags[task_id].set()
+            self.task_status[task_id].status = 'paused'
+            self._save_task_state(task_id)
+
+        logger.info(f"任务已暂停: {task_id}")
+        return True
+
+    def resume_task(self, task_id: str, service) -> bool:
+        """恢复任务"""
+        if task_id not in self.task_status:
+            logger.warning(f"任务不存在: {task_id}")
+            return False
+
+        with self.progress_lock:
+            if self.task_status[task_id].status != 'paused':
+                logger.warning(f"任务不在暂停状态，无法恢复: {task_id}, 当前状态={self.task_status[task_id].status}")
+                return False
+
+            # 清除暂停标志
+            self.pause_flags[task_id].clear()
+            self.task_status[task_id].status = 'running'
+
+            # 重新提交任务
+            param_combinations = self.task_status[task_id].param_combinations
+            groups = self.task_status[task_id].groups
+            current_param_index = self.task_status[task_id].current_param_index
+
+            # 从断点处继续
+            remaining_params = param_combinations[current_param_index:]
+
+            if not remaining_params:
+                logger.warning(f"任务已完成所有参数组合: {task_id}")
+                self.task_status[task_id].status = 'completed'
+                self.task_status[task_id].end_time = datetime.now().isoformat()
+                self._save_task_state(task_id)
+                return False
+
+            # 提交到线程池
+            future = self.executor.submit(
+                self._execute_batch_task,
+                task_id,
+                service,
+                remaining_params,
+                groups
+            )
+
+            self.active_tasks[task_id] = future
+            self._save_task_state(task_id)
+
+        logger.info(f"任务已恢复: {task_id}, 从参数组合 {current_param_index}/{len(param_combinations)} 继续")
+        return True
 
     def get_task_status(self, task_id: str) -> Optional[Dict]:
         """

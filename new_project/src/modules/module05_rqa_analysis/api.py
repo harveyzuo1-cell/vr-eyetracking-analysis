@@ -2,8 +2,9 @@
 Module05 RQA分析API
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 import base64
+from pathlib import Path
 
 from src.utils.logger import setup_logger
 from .service import RQAAnalysisService
@@ -68,7 +69,8 @@ def generate_param_combinations():
         "m_range": {"start": 1, "end": 10, "step": 1},
         "tau_range": {"start": 1, "end": 10, "step": 1},
         "eps_range": {"start": 0.05, "end": 0.1, "step": 0.001},
-        "lmin_range": {"start": 2, "end": 3, "step": 1}
+        "lmin_range": {"start": 2, "end": 3, "step": 1},
+        "data_version": "v1"  // 可选，默认v1
     }
 
     Response:
@@ -76,7 +78,8 @@ def generate_param_combinations():
         "success": true,
         "total_combinations": 10200,
         "combinations": [...],
-        "estimated_time_minutes": 340
+        "estimated_time_minutes": 340,
+        "data_version": "v1"
     }
     """
     data = request.get_json()
@@ -86,7 +89,8 @@ def generate_param_combinations():
         m_range=data['m_range'],
         tau_range=data['tau_range'],
         eps_range=data['eps_range'],
-        lmin_range=data['lmin_range']
+        lmin_range=data['lmin_range'],
+        data_version=data.get('data_version', 'v1')
     )
 
     return jsonify(result)
@@ -96,29 +100,28 @@ def generate_param_combinations():
 @handle_api_errors
 def get_param_history():
     """
-    获取参数历史记录
+    获取参数历史记录和缓存的参数组合
 
     Response:
     {
         "success": true,
-        "history": [
-            {
-                "signature": "m2_tau1_eps0.05_lmin2",
-                "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
-                "completed_steps": 2,
-                "progress": 40.0,
-                "last_updated": "2025-10-07T15:30:45"
-            },
-            ...
-        ]
+        "history": [...],
+        "combinations": [...],  // 用于批量执行
+        "data_version": "v1"
     }
     """
     service = get_service()
     history = service.get_param_history()
 
+    # 读取缓存的参数组合
+    cached_params = service.get_cached_param_combinations()
+
     return jsonify({
         'success': True,
-        'history': history
+        'history': history,
+        'combinations': cached_params.get('combinations', []),
+        'data_version': cached_params.get('data_version', 'v1'),
+        'total_combinations': cached_params.get('total_combinations', 0)
     })
 
 
@@ -602,4 +605,155 @@ def cancel_task(task_id):
     return jsonify({
         'success': True,
         'message': '任务已取消'
+    })
+
+
+@m05_bp.route('/tasks/pause/<task_id>', methods=['POST'])
+@handle_api_errors
+def pause_task(task_id):
+    """
+    暂停任务
+
+    Response:
+    {
+        "success": true,
+        "message": "任务已暂停"
+    }
+    """
+    executor = get_task_executor()
+    paused = executor.pause_task(task_id)
+
+    if not paused:
+        return jsonify({
+            'success': False,
+            'error': f'无法暂停任务: {task_id}'
+        }), 400
+
+    return jsonify({
+        'success': True,
+        'message': '任务已暂停'
+    })
+
+
+@m05_bp.route('/tasks/resume/<task_id>', methods=['POST'])
+@handle_api_errors
+def resume_task(task_id):
+    """
+    恢复任务
+
+    Response:
+    {
+        "success": true,
+        "message": "任务已恢复"
+    }
+    """
+    executor = get_task_executor()
+    service = get_service()
+    resumed = executor.resume_task(task_id, service)
+
+    if not resumed:
+        return jsonify({
+            'success': False,
+            'error': f'无法恢复任务: {task_id}'
+        }), 400
+
+    return jsonify({
+        'success': True,
+        'message': '任务已恢复'
+    })
+
+
+@m05_bp.route('/visualizations/<signature>/<filename>', methods=['GET'])
+@handle_api_errors
+def get_visualization(signature, filename):
+    """
+    获取可视化图片文件
+
+    路径: /api/m05/visualizations/{signature}/{filename}
+
+    例如: /api/m05/visualizations/m2_tau1_eps0.05_lmin2/rqa_metrics_boxplot.png
+
+    Response: 图片文件 (PNG格式)
+    """
+    service = get_service()
+
+    # 构建文件路径
+    # data/05_rqa_analysis/results/{signature}/step5_visualization/statistical_plots/{filename}
+    visualization_dir = service.results_dir / signature / 'step5_visualization' / 'statistical_plots'
+    file_path = visualization_dir / filename
+
+    if not file_path.exists():
+        return jsonify({
+            'success': False,
+            'error': f'可视化文件不存在: {signature}/{filename}'
+        }), 404
+
+    # 返回图片文件
+    return send_file(
+        str(file_path),
+        mimetype='image/png',
+        as_attachment=False
+    )
+
+
+@m05_bp.route('/results/completed', methods=['GET'])
+@handle_api_errors
+def get_completed_results():
+    """
+    获取已完成的RQA分析结果列表
+
+    Query Parameters:
+        - task_id: 批次ID (可选，筛选指定批次的结果)
+
+    Response:
+    {
+        "success": true,
+        "completed_results": [
+            {"m": 1, "tau": 1, "eps": 0.05, "lmin": 2, "task_id": "...", ...},
+            ...
+        ],
+        "total_count": 704
+    }
+    """
+    service = get_service()
+    task_id = request.args.get('task_id')
+
+    completed_results = service.scan_completed_results(task_id=task_id)
+
+    return jsonify({
+        'success': True,
+        'completed_results': completed_results,
+        'total_count': len(completed_results)
+    })
+
+
+@m05_bp.route('/batches/list', methods=['GET'])
+@handle_api_errors
+def get_batch_list():
+    """
+    获取批次列表
+
+    Response:
+    {
+        "success": true,
+        "batches": [
+            {
+                "task_id": "task_20251008_163415",
+                "batch_time": "2025-10-08T16:34:15",
+                "data_version": "v1",
+                "param_count": 704,
+                "display_name": "2025-10-08 16:34:15 (V1数据, 704个参数)"
+            },
+            ...
+        ],
+        "total_count": 10
+    }
+    """
+    service = get_service()
+    batches = service.get_batch_list()
+
+    return jsonify({
+        'success': True,
+        'batches': batches,
+        'total_count': len(batches)
     })

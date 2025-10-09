@@ -9,6 +9,7 @@ import {
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
+  CloseCircleOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
 import PropTypes from 'prop-types';
@@ -21,9 +22,10 @@ const BatchExecutionPanel = () => {
   const [selectedGroups, setSelectedGroups] = useState(['control', 'mci', 'ad']);
   const [paramCombinations, setParamCombinations] = useState([]);
 
-  // 加载缓存的参数组合
+  // 加载缓存的参数组合并恢复未完成的任务
   useEffect(() => {
     loadParamCombinations();
+    restoreUnfinishedTasks();
   }, []);
 
   const loadParamCombinations = async () => {
@@ -34,6 +36,26 @@ const BatchExecutionPanel = () => {
       }
     } catch (error) {
       console.error('加载参数组合失败:', error);
+    }
+  };
+
+  const restoreUnfinishedTasks = async () => {
+    try {
+      const response = await axios.get('/api/m05/tasks/list');
+      if (response.data.success && response.data.tasks.length > 0) {
+        // 查找第一个未完成的任务 (running或paused状态)
+        const unfinishedTask = response.data.tasks.find(
+          task => task.status === 'running' || task.status === 'paused'
+        );
+
+        if (unfinishedTask) {
+          setTaskStatus(unfinishedTask);
+          setIsRunning(unfinishedTask.status === 'running');
+          message.info(`已恢复任务: ${unfinishedTask.task_id}`);
+        }
+      }
+    } catch (error) {
+      console.error('恢复任务失败:', error);
     }
   };
 
@@ -126,13 +148,50 @@ const BatchExecutionPanel = () => {
     }
   };
 
+  const handlePauseTask = async () => {
+    if (!taskStatus?.task_id) return;
+
+    try {
+      const response = await axios.post(`/api/m05/tasks/pause/${taskStatus.task_id}`);
+
+      if (response.data.success) {
+        message.info('任务已暂停');
+        // 状态会通过轮询自动更新
+      } else {
+        message.error('暂停任务失败');
+      }
+    } catch (error) {
+      console.error('暂停任务失败:', error);
+      message.error('暂停任务失败: ' + error.message);
+    }
+  };
+
+  const handleResumeTask = async () => {
+    if (!taskStatus?.task_id) return;
+
+    try {
+      const response = await axios.post(`/api/m05/tasks/resume/${taskStatus.task_id}`);
+
+      if (response.data.success) {
+        message.info('任务已恢复');
+        setIsRunning(true);
+      } else {
+        message.error('恢复任务失败');
+      }
+    } catch (error) {
+      console.error('恢复任务失败:', error);
+      message.error('恢复任务失败: ' + error.message);
+    }
+  };
+
   const getStatusTag = (status) => {
     const statusMap = {
       'pending': { color: 'default', text: '等待中' },
       'running': { color: 'processing', text: '运行中' },
+      'paused': { color: 'warning', text: '已暂停' },
       'completed': { color: 'success', text: '已完成' },
       'failed': { color: 'error', text: '失败' },
-      'cancelled': { color: 'warning', text: '已取消' }
+      'cancelled': { color: 'default', text: '已取消' }
     };
     const config = statusMap[status] || statusMap['pending'];
     return <Tag color={config.color}>{config.text}</Tag>;
@@ -275,14 +334,41 @@ const BatchExecutionPanel = () => {
 
             <div style={{ textAlign: 'center' }}>
               <Space>
-                {isRunning && (
-                  <Button
-                    danger
-                    icon={<PauseCircleOutlined />}
-                    onClick={handleCancelTask}
-                  >
-                    取消任务
-                  </Button>
+                {taskStatus?.status === 'running' && (
+                  <>
+                    <Button
+                      type="primary"
+                      icon={<PauseCircleOutlined />}
+                      onClick={handlePauseTask}
+                    >
+                      暂停任务
+                    </Button>
+                    <Button
+                      danger
+                      icon={<CloseCircleOutlined />}
+                      onClick={handleCancelTask}
+                    >
+                      取消任务
+                    </Button>
+                  </>
+                )}
+                {taskStatus?.status === 'paused' && (
+                  <>
+                    <Button
+                      type="primary"
+                      icon={<PlayCircleOutlined />}
+                      onClick={handleResumeTask}
+                    >
+                      继续任务
+                    </Button>
+                    <Button
+                      danger
+                      icon={<CloseCircleOutlined />}
+                      onClick={handleCancelTask}
+                    >
+                      取消任务
+                    </Button>
+                  </>
                 )}
                 <Button
                   icon={<ReloadOutlined />}
@@ -290,7 +376,7 @@ const BatchExecutionPanel = () => {
                     setTaskStatus(null);
                     setIsRunning(false);
                   }}
-                  disabled={isRunning}
+                  disabled={taskStatus?.status === 'running' || taskStatus?.status === 'paused'}
                 >
                   重置
                 </Button>
