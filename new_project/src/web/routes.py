@@ -92,6 +92,10 @@ def register_routes(app: Flask):
     app.register_blueprint(m05_advanced_bp)
     app.register_blueprint(m05_individual_bp)
 
+    # 注册Module06: 特征提取与选择
+    from src.modules.module06_feature_extraction.api import m06_bp
+    app.register_blueprint(m06_bp)
+
     # 静态文件服务: 背景图片
     @app.route('/static/background_images/<version>/<filename>')
     def serve_background_image(version, filename):

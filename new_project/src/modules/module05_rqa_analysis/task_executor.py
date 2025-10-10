@@ -38,6 +38,8 @@ class TaskStatus:
     current_param_index: int = 0  # 当前处理到第几个参数组合
     param_combinations: Optional[List[Dict]] = None  # 参数组合列表
     groups: Optional[List[str]] = None  # 分组列表
+    # 敏感性分析结果
+    sensitivity_result: Optional[List[Dict]] = None  # 敏感性分析结果
 
     @property
     def progress(self) -> float:
@@ -564,6 +566,183 @@ class RQATaskExecutor:
         if to_remove:
             logger.info(f"清理了 {len(to_remove)} 个已完成任务")
 
+    def submit_sensitivity_task(self, task_id: str, analyzer, results_by_params: List[Dict]) -> str:
+        """
+        提交参数敏感性分析任务
+
+        Args:
+            task_id: 任务ID
+            analyzer: ParameterSensitivityAnalyzer实例
+            results_by_params: 参数组合和结果路径列表
+
+        Returns:
+            task_id
+        """
+        # 初始化任务状态
+        self.task_status[task_id] = TaskStatus(
+            task_id=task_id,
+            total_files=len(results_by_params),
+            processed_files=0,
+            failed_files=0,
+            current_step=1,
+            status='pending',
+            start_time=datetime.now().isoformat(),
+            current_param=None,
+            current_param_index=0,
+            param_combinations=None,
+            groups=None
+        )
+
+        # 创建取消标志
+        self.cancel_flags[task_id] = threading.Event()
+        self.pause_flags[task_id] = threading.Event()
+
+        # 提交到线程池
+        future = self.thread_executor.submit(
+            self._execute_sensitivity_task,
+            task_id,
+            analyzer,
+            results_by_params
+        )
+
+        self.active_tasks[task_id] = future
+        self.task_status[task_id].status = 'running'
+        self._save_task_state(task_id)
+
+        logger.info(f"敏感性分析任务已提交: {task_id}, 参数组合数={len(results_by_params)}")
+
+        return task_id
+
+    def _execute_sensitivity_task(self, task_id: str, analyzer, results_by_params: List[Dict]):
+        """
+        执行参数敏感性分析任务
+
+        Args:
+            task_id: 任务ID
+            analyzer: ParameterSensitivityAnalyzer实例
+            results_by_params: 参数组合和结果路径列表
+        """
+        try:
+            # 检查是否取消
+            if self.cancel_flags[task_id].is_set():
+                logger.info(f"敏感性分析任务已取消: {task_id}")
+                self.task_status[task_id].status = 'cancelled'
+                self.task_status[task_id].end_time = datetime.now().isoformat()
+                self._save_task_state(task_id)
+                return
+
+            # 执行敏感性分析 - 手动处理进度更新
+            logger.info(f"开始执行敏感性分析: {task_id}")
+
+            # 懒加载scipy和pandas
+            from scipy import stats
+            import pandas as pd
+            from pathlib import Path
+
+            sensitivity_scores = []
+            total = len(results_by_params)
+
+            for idx, param_result in enumerate(results_by_params):
+                # 检查取消标志
+                if self.cancel_flags[task_id].is_set():
+                    logger.info(f"敏感性分析任务已取消: {task_id}")
+                    with self.progress_lock:
+                        self.task_status[task_id].status = 'cancelled'
+                        self.task_status[task_id].end_time = datetime.now().isoformat()
+                    self._save_task_state(task_id)
+                    return
+
+                params = param_result['params']
+                enriched_path = Path(param_result['enriched_features_path'])
+
+                if not enriched_path.exists():
+                    logger.warning(f"Enriched features file not found: {enriched_path}")
+                    with self.progress_lock:
+                        self.task_status[task_id].processed_files = idx + 1
+                    continue
+
+                # 读取并处理该参数组合的数据
+                df = pd.read_csv(enriched_path)
+                df.columns = df.columns.str.lower()
+                if 'group' in df.columns:
+                    df['group'] = df['group'].str.lower()
+
+                param_sig = f"m{params['m']}_tau{params['tau']}_eps{params['eps']:.3f}_lmin{params['lmin']}"
+                rqa_feature_cols = analyzer._identify_rqa_features(df)
+
+                # 计算敏感性指标
+                for feature in rqa_feature_cols:
+                    if feature not in df.columns:
+                        continue
+
+                    task_f_stats = []
+                    for task in ['q1', 'q2', 'q3', 'q4', 'q5']:
+                        task_df = df[df['task_id'] == task]
+                        if len(task_df) < 3:
+                            continue
+
+                        groups = []
+                        for group in ['control', 'mci', 'ad']:
+                            group_data = task_df[task_df['group'] == group][feature].dropna()
+                            if len(group_data) > 0:
+                                groups.append(group_data.values)
+
+                        if len(groups) >= 2:
+                            try:
+                                f_stat, p_val = stats.f_oneway(*groups)
+                                if not pd.isna(f_stat):
+                                    task_f_stats.append(f_stat)
+                            except Exception:
+                                pass
+
+                    if len(task_f_stats) > 0:
+                        avg_f = float(pd.Series(task_f_stats).mean())
+                        sensitivity_scores.append({
+                            'param_signature': param_sig,
+                            'm': params['m'],
+                            'tau': params['tau'],
+                            'eps': params['eps'],
+                            'lmin': params['lmin'],
+                            'feature': feature,
+                            'f_statistic': avg_f,
+                            'p_value': 0.0,
+                            'effect_size': 0.0,
+                            'task_consistency': len(task_f_stats) / 5.0,
+                            'overall_score': avg_f
+                        })
+
+                # 更新进度
+                with self.progress_lock:
+                    self.task_status[task_id].processed_files = idx + 1
+
+                # 每处理10个参数组合保存一次状态
+                if (idx + 1) % 10 == 0:
+                    self._save_task_state(task_id)
+                    logger.debug(f"敏感性分析进度: {idx + 1}/{total}")
+
+            # 转换为DataFrame
+            sensitivity_df = pd.DataFrame(sensitivity_scores)
+
+            # 更新状态为完成
+            with self.progress_lock:
+                self.task_status[task_id].processed_files = total
+                self.task_status[task_id].status = 'completed'
+                self.task_status[task_id].end_time = datetime.now().isoformat()
+
+            # 保存结果到任务状态
+            self.task_status[task_id].sensitivity_result = sensitivity_df.to_dict('records')
+            self._save_task_state(task_id)
+
+            logger.info(f"敏感性分析完成: {task_id}, 生成了 {len(sensitivity_df)} 条记录")
+
+        except Exception as e:
+            logger.error(f"敏感性分析任务失败: {task_id} - {e}", exc_info=True)
+            with self.progress_lock:
+                self.task_status[task_id].status = 'failed'
+                self.task_status[task_id].error_message = str(e)
+                self.task_status[task_id].end_time = datetime.now().isoformat()
+            self._save_task_state(task_id)
+
     def shutdown(self, wait: bool = True):
         """
         关闭执行器
@@ -572,4 +751,5 @@ class RQATaskExecutor:
             wait: 是否等待所有任务完成
         """
         logger.info("关闭RQATaskExecutor...")
-        self.executor.shutdown(wait=wait)
+        self.thread_executor.shutdown(wait=wait)
+        self.process_executor.shutdown(wait=wait)

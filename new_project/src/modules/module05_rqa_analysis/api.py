@@ -11,6 +11,9 @@ from src.utils.logger import setup_logger
 from .service import RQAAnalysisService
 from .utils import handle_api_errors, validate_params, monitor_performance, validate_rqa_params
 from .task_executor import RQATaskExecutor
+from .visualization_service import VisualizationService
+from .parameter_sensitivity_analyzer import ParameterSensitivityAnalyzer
+from .api_response import success_response, error_response, progress_response
 from datetime import datetime
 
 logger = setup_logger(__name__)
@@ -22,6 +25,13 @@ _service_instance = None
 
 # TaskExecutor单例实例（懒加载）
 _task_executor = None
+
+# VisualizationService单例实例（懒加载）
+_visualization_service = None
+
+# ParameterSensitivityAnalyzer单例实例（懒加载）
+_sensitivity_analyzer = None
+
 
 
 def get_service() -> RQAAnalysisService:
@@ -52,10 +62,41 @@ def get_task_executor() -> RQATaskExecutor:
     return _task_executor
 
 
+def get_visualization_service() -> VisualizationService:
+    """
+    获取VisualizationService单例实例（懒加载模式）
+
+    Returns:
+        VisualizationService: VisualizationService实例
+    """
+    global _visualization_service
+    if _visualization_service is None:
+        _visualization_service = VisualizationService()
+        logger.info("VisualizationService initialized (lazy loading)")
+    return _visualization_service
+
+
+def get_sensitivity_analyzer() -> ParameterSensitivityAnalyzer:
+    """
+    获取ParameterSensitivityAnalyzer单例实例（懒加载模式）
+
+    Returns:
+        ParameterSensitivityAnalyzer: 参数敏感性分析器实例
+    """
+    global _sensitivity_analyzer
+    if _sensitivity_analyzer is None:
+        _sensitivity_analyzer = ParameterSensitivityAnalyzer()
+        logger.info("ParameterSensitivityAnalyzer initialized (lazy loading)")
+    return _sensitivity_analyzer
+
+
 @m05_bp.route('/health', methods=['GET'])
 def health_check() -> Response:
     """健康检查"""
-    return jsonify({'status': 'ok', 'module': 'module05_rqa_analysis'})
+    return success_response(
+        data={'module': 'module05_rqa_analysis'},
+        message='Module05 is healthy'
+    )
 
 
 @m05_bp.route('/params/generate', methods=['POST'])
@@ -94,7 +135,10 @@ def generate_param_combinations() -> Response:
         data_version=data.get('data_version', 'v1')
     )
 
-    return jsonify(result)
+    return success_response(
+        data=result,
+        message=f"Generated {result.get('total_combinations', 0)} parameter combinations"
+    )
 
 
 @m05_bp.route('/params/history', methods=['GET'])
@@ -117,13 +161,15 @@ def get_param_history() -> Response:
     # 读取缓存的参数组合
     cached_params = service.get_cached_param_combinations()
 
-    return jsonify({
-        'success': True,
-        'history': history,
-        'combinations': cached_params.get('combinations', []),
-        'data_version': cached_params.get('data_version', 'v1'),
-        'total_combinations': cached_params.get('total_combinations', 0)
-    })
+    return success_response(
+        data={
+            'history': history,
+            'combinations': cached_params.get('combinations', []),
+            'data_version': cached_params.get('data_version', 'v1'),
+            'total_combinations': cached_params.get('total_combinations', 0)
+        },
+        message='Parameter history retrieved successfully'
+    )
 
 
 @m05_bp.route('/analyze/single', methods=['POST'])
@@ -156,10 +202,7 @@ def analyze_single() -> Union[Response, Tuple[Response, int]]:
     # 验证参数
     valid, error_msg = validate_rqa_params(params)
     if not valid:
-        return jsonify({
-            'success': False,
-            'error': error_msg
-        }), 400
+        return error_response(error_msg, 'INVALID_PARAMS', 400)
 
     service = get_service()
 
@@ -168,9 +211,16 @@ def analyze_single() -> Union[Response, Tuple[Response, int]]:
 
     # 根据结果返回状态码
     if not result['success']:
-        return jsonify(result), 500
+        return error_response(
+            result.get('error', 'Pipeline execution failed'),
+            'PIPELINE_ERROR',
+            500
+        )
 
-    return jsonify(result)
+    return success_response(
+        data=result,
+        message='Single RQA analysis completed successfully'
+    )
 
 
 @m05_bp.route('/analyze/batch', methods=['POST'])
@@ -288,10 +338,10 @@ def list_results() -> Response:
     if signature:
         history = [h for h in history if h['signature'] == signature]
 
-    return jsonify({
-        'success': True,
-        'results': history
-    })
+    return success_response(
+        data={'results': history},
+        message=f"Found {len(history)} analysis results"
+    )
 
 
 @m05_bp.route('/visualize/recurrence-plot', methods=['POST'])
@@ -445,10 +495,11 @@ def submit_async_task() -> Union[Response, Tuple[Response, int]]:
     for params in param_combinations:
         valid, error_msg = validate_rqa_params(params)
         if not valid:
-            return jsonify({
-                'success': False,
-                'error': f'参数无效: {params} - {error_msg}'
-            }), 400
+            return error_response(
+                f'参数无效: {params} - {error_msg}',
+                'INVALID_PARAMS',
+                400
+            )
 
     # 生成任务ID
     task_id = f"task_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -468,12 +519,14 @@ def submit_async_task() -> Union[Response, Tuple[Response, int]]:
     # 获取初始状态
     status = executor.get_task_status(task_id)
 
-    return jsonify({
-        'success': True,
-        'task_id': task_id,
-        'total_files': status['total_files'],
-        'message': '任务已提交到后台执行'
-    })
+    return success_response(
+        data={
+            'task_id': task_id,
+            'total_files': status['total_files']
+        },
+        message='Async batch task submitted successfully',
+        status_code=201
+    )
 
 
 @m05_bp.route('/tasks/status/<task_id>', methods=['GET'])
@@ -501,15 +554,27 @@ def get_task_status(task_id: str) -> Union[Response, Tuple[Response, int]]:
     status = executor.get_task_status(task_id)
 
     if status is None:
-        return jsonify({
-            'success': False,
-            'error': f'任务不存在: {task_id}'
-        }), 404
+        return error_response(
+            f'Task not found: {task_id}',
+            'TASK_NOT_FOUND',
+            404
+        )
 
-    return jsonify({
-        'success': True,
-        'task': status
-    })
+    # 转换为progress_response格式
+    if status.get('status') in ['running', 'pending']:
+        return progress_response(
+            current=status.get('processed_files', 0),
+            total=status.get('total_files', 0),
+            status=status.get('status', 'processing'),
+            message=f"Processing step {status.get('current_step', 1)}/5",
+            eta=status.get('eta_seconds'),
+            details={'task': status}
+        )
+    else:
+        return success_response(
+            data={'task': status},
+            message=f"Task {status.get('status', 'completed')}"
+        )
 
 
 @m05_bp.route('/tasks/list', methods=['GET'])
@@ -672,11 +737,13 @@ def get_completed_results():
 
     completed_results = service.scan_completed_results(task_id=task_id)
 
-    return jsonify({
-        'success': True,
-        'completed_results': completed_results,
-        'total_count': len(completed_results)
-    })
+    return success_response(
+        data={
+            'completed_results': completed_results,
+            'total_count': len(completed_results)
+        },
+        message=f"Found {len(completed_results)} completed results"
+    )
 
 
 @m05_bp.route('/batches/list', methods=['GET'])
@@ -704,10 +771,539 @@ def get_batch_list():
     service = get_service()
     batches = service.get_batch_list()
 
+    return success_response(
+        data={
+            'batches': batches,
+            'total_count': len(batches)
+        },
+        message=f"Found {len(batches)} batches"
+    )
+
+
+# ========== 可视化分析 API 路由 ==========
+
+@m05_bp.route('/visualization/descriptive-stats', methods=['POST'])
+@validate_params('params')
+@handle_api_errors
+def generate_descriptive_stats() -> Response:
+    """
+    生成描述性统计
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2}
+    }
+    """
+    data = request.get_json()
+    params = data['params']
+
+    viz_service = get_visualization_service()
+    result = viz_service.generate_descriptive_stats(params)
+
+    return jsonify(result)
+
+
+@m05_bp.route('/visualization/correlation-analysis', methods=['POST'])
+@validate_params('params')
+@handle_api_errors
+def generate_correlation_analysis() -> Response:
+    """
+    生成相关性分析
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
+        "method": "pearson"  // 可选: "pearson" 或 "spearman"
+    }
+    """
+    data = request.get_json()
+    params = data['params']
+    method = data.get('method', 'pearson')
+
+    viz_service = get_visualization_service()
+    result = viz_service.generate_correlation_analysis(params, method)
+
+    return jsonify(result)
+
+
+@m05_bp.route('/visualization/significance-barplot', methods=['POST'])
+@validate_params('params')
+@handle_api_errors
+def generate_significance_barplot() -> Response:
+    """
+    生成显著性特征柱状图
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
+        "top_n": 20  // 可选，默认 20
+    }
+    """
+    data = request.get_json()
+    params = data['params']
+    top_n = data.get('top_n', 20)
+
+    viz_service = get_visualization_service()
+    result = viz_service.generate_significance_barplot(params, top_n)
+
+    return jsonify(result)
+
+
+@m05_bp.route('/visualization/complexity-violin', methods=['POST'])
+@validate_params('params')
+@handle_api_errors
+def generate_complexity_violin() -> Response:
+    """
+    生成复杂度小提琴图
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2}
+    }
+    """
+    data = request.get_json()
+    params = data['params']
+
+    viz_service = get_visualization_service()
+    result = viz_service.generate_complexity_violin(params)
+
+    return jsonify(result)
+
+
+@m05_bp.route('/visualization/grouped-boxplots', methods=['POST'])
+@validate_params('params')
+@handle_api_errors
+def generate_grouped_boxplots() -> Response:
+    """
+    生成分组箱线图
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
+        "features": ["x_rr", "y_det", ...]  // 可选，默认使用显著特征
+    }
+    """
+    data = request.get_json()
+    params = data['params']
+    features = data.get('features')
+
+    viz_service = get_visualization_service()
+    result = viz_service.generate_grouped_boxplots(params, features)
+
+    return jsonify(result)
+
+
+@m05_bp.route('/visualization/generate-all', methods=['POST'])
+@validate_params('params')
+@handle_api_errors
+def generate_all_visualizations() -> Response:
+    """
+    一键生成所有可视化
+
+    Request Body:
+    {
+        "params": {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2}
+    }
+    """
+    data = request.get_json()
+    params = data['params']
+
+    viz_service = get_visualization_service()
+    result = viz_service.generate_all_visualizations(params)
+
+    if not result.get('success'):
+        return error_response(
+            result.get('error', 'Failed to generate visualizations'),
+            'VISUALIZATION_ERROR',
+            500
+        )
+
+    return success_response(
+        data=result,
+        message='All visualizations generated successfully'
+    )
+
+
+@m05_bp.route('/visualization/image/<path:filename>', methods=['GET'])
+@handle_api_errors
+def get_visualization_image(filename: str) -> Response:
+    """
+    获取可视化图片
+
+    URL: /api/m05/visualization/image/{signature}/{filename}
+    """
+    viz_service = get_visualization_service()
+    file_path = viz_service.viz_dir / filename
+
+    if not file_path.exists():
+        return jsonify({'success': False, 'error': '图片不存在'}), 404
+
+    return send_file(file_path, mimetype='image/png')
+
+
+@m05_bp.route('/visualization/batch-generate', methods=['POST'])
+@validate_params('param_list')
+@handle_api_errors
+def batch_generate_visualizations() -> Response:
+    """
+    批量生成多个参数组合的可视化
+
+    Request Body:
+    {
+        "param_list": [
+            {"m": 2, "tau": 1, "eps": 0.05, "lmin": 2},
+            {"m": 2, "tau": 1, "eps": 0.051, "lmin": 2},
+            ...
+        ]
+    }
+
+    Response:
+    {
+        "success": true,
+        "total_params": 10,
+        "completed": 9,
+        "failed": 1,
+        "results": [...]
+    }
+    """
+    data = request.get_json()
+    param_list = data['param_list']
+
+    viz_service = get_visualization_service()
+    result = viz_service.batch_generate_visualizations(param_list)
+
+    return jsonify(result)
+
+
+@m05_bp.route('/visualization/list', methods=['GET'])
+@handle_api_errors
+def list_visualizations() -> Response:
+    """
+    列出所有已生成的可视化
+
+    Response:
+    {
+        "success": true,
+        "visualizations": [...],
+        "total_params": 10
+    }
+    """
+    viz_service = get_visualization_service()
+    result = viz_service.list_all_visualizations()
+
+    return jsonify(result)
+
+
+
+# ============================================================================
+# 参数敏感性分析API (Parameter Sensitivity Analysis)
+# ============================================================================
+
+@m05_bp.route('/sensitivity/scan-results', methods=['GET'])
+@handle_api_errors
+def scan_rqa_results() -> Response:
+    """
+    扫描磁盘上所有RQA分析结果
+
+    直接从data/05_rqa_analysis/results目录扫描,不依赖任务状态
+
+    Returns:
+        JSON response with list of parameter combinations and their enriched_features paths
+    """
+    results_base_dir = Path('data/05_rqa_analysis/results')
+
+    if not results_base_dir.exists():
+        return jsonify({
+            'success': False,
+            'message': '结果目录不存在'
+        }), 404
+
+    results_by_params = []
+
+    for param_dir in results_base_dir.iterdir():
+        if not param_dir.is_dir():
+            continue
+
+        enriched_path = param_dir / 'step3_feature_enrichment' / 'enriched_features.csv'
+
+        if enriched_path.exists():
+            try:
+                # Parse parameter directory name: m2_tau1_eps0.050_lmin2
+                dir_name = param_dir.name
+                parts = dir_name.split('_')
+                params = {
+                    'm': int(parts[0][1:]),
+                    'tau': int(parts[1][3:]),
+                    'eps': float(parts[2][3:]),
+                    'lmin': int(parts[3][4:])
+                }
+
+                results_by_params.append({
+                    'params': params,
+                    'enriched_features_path': str(enriched_path),
+                    'param_signature': dir_name
+                })
+            except (IndexError, ValueError) as e:
+                logger.warning(f"无法解析参数目录名: {dir_name}, 错误: {e}")
+                continue
+
     return jsonify({
         'success': True,
-        'batches': batches,
-        'total_count': len(batches)
+        'results': results_by_params,
+        'total': len(results_by_params)
     })
 
 
+@m05_bp.route('/sensitivity/compute-scores', methods=['POST'])
+@handle_api_errors
+def compute_sensitivity_scores() -> Response:
+    """
+    计算参数敏感性评分（异步任务）
+
+    使用磁盘扫描获取所有参数组合的RQA结果,提交异步任务计算敏感性评分
+
+    Returns:
+        JSON response with task_id
+    """
+    # 扫描磁盘获取所有参数组合
+    results_base_dir = Path('data/05_rqa_analysis/results')
+
+    if not results_base_dir.exists():
+        return error_response(
+            '结果目录不存在,请先运行RQA分析',
+            'NO_RESULTS',
+            400
+        )
+
+    results_by_params = []
+
+    for param_dir in results_base_dir.iterdir():
+        if not param_dir.is_dir():
+            continue
+
+        enriched_path = param_dir / 'step3_feature_enrichment' / 'enriched_features.csv'
+
+        if enriched_path.exists():
+            try:
+                dir_name = param_dir.name
+                parts = dir_name.split('_')
+                params = {
+                    'm': int(parts[0][1:]),
+                    'tau': int(parts[1][3:]),
+                    'eps': float(parts[2][3:]),
+                    'lmin': int(parts[3][4:])
+                }
+
+                results_by_params.append({
+                    'params': params,
+                    'enriched_features_path': str(enriched_path)
+                })
+            except (IndexError, ValueError) as e:
+                logger.warning(f"无法解析参数目录名: {dir_name}, 错误: {e}")
+                continue
+
+    if not results_by_params:
+        return error_response(
+            '未找到可用的RQA分析结果',
+            'NO_RESULTS',
+            400
+        )
+
+    # 生成任务ID
+    task_id = f"sensitivity_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    # 提交异步任务
+    executor = get_task_executor()
+    analyzer = get_sensitivity_analyzer()
+
+    executor.submit_sensitivity_task(
+        task_id=task_id,
+        analyzer=analyzer,
+        results_by_params=results_by_params
+    )
+
+    return success_response(
+        data={
+            'task_id': task_id,
+            'total_params': len(results_by_params)
+        },
+        message='参数敏感性分析任务已提交',
+        status_code=201
+    )
+
+
+@m05_bp.route('/sensitivity/status/<task_id>', methods=['GET'])
+@handle_api_errors
+def get_sensitivity_status(task_id: str) -> Response:
+    """
+    获取参数敏感性分析任务状态
+
+    Args:
+        task_id: 任务ID
+
+    Returns:
+        JSON response with task status and results if completed
+    """
+    executor = get_task_executor()
+    status = executor.get_task_status(task_id)
+
+    if status is None:
+        return error_response(
+            f'Task not found: {task_id}',
+            'TASK_NOT_FOUND',
+            404
+        )
+
+    # 如果任务正在运行，返回进度
+    if status.get('status') in ['running', 'pending']:
+        return progress_response(
+            current=status.get('processed_files', 0),
+            total=status.get('total_files', 0),
+            status=status.get('status', 'processing'),
+            message='Computing parameter sensitivity scores...',
+            eta=status.get('eta_seconds'),
+            details={'task': status}
+        )
+    # 如果任务已完成，返回结果
+    elif status.get('status') == 'completed':
+        return success_response(
+            data={
+                'task': status,
+                'sensitivity_scores': status.get('sensitivity_result', []),
+                'total_params': len(set(s['param_signature'] for s in status.get('sensitivity_result', []) if 'param_signature' in s)),
+                'total_features': len(set(s['feature'] for s in status.get('sensitivity_result', []) if 'feature' in s))
+            },
+            message='Sensitivity analysis completed successfully'
+        )
+    # 其他状态（失败、取消等）
+    else:
+        return success_response(
+            data={'task': status},
+            message=f"Task {status.get('status', 'unknown')}"
+        )
+
+
+@m05_bp.route('/sensitivity/plot-3d-space', methods=['POST'])
+@handle_api_errors
+def plot_3d_parameter_space() -> Response:
+    """
+    生成3D参数空间图
+    """
+    data = request.get_json()
+    feature = data['feature']
+    x_param = data.get('x_param', 'm')
+    y_param = data.get('y_param', 'tau')
+    z_metric = data.get('z_metric', 'f_statistic')
+    color_param = data.get('color_param', 'eps')
+
+    # 先计算敏感性评分
+    results_base_dir = Path('data/05_rqa_analysis/results')
+    results_by_params = []
+
+    for param_dir in results_base_dir.iterdir():
+        if not param_dir.is_dir():
+            continue
+        enriched_path = param_dir / 'step3_feature_enrichment' / 'enriched_features.csv'
+        if enriched_path.exists():
+            try:
+                dir_name = param_dir.name
+                parts = dir_name.split('_')
+                params = {
+                    'm': int(parts[0][1:]),
+                    'tau': int(parts[1][3:]),
+                    'eps': float(parts[2][3:]),
+                    'lmin': int(parts[3][4:])
+                }
+                results_by_params.append({
+                    'params': params,
+                    'enriched_features_path': str(enriched_path)
+                })
+            except (IndexError, ValueError):
+                continue
+
+    analyzer = get_sensitivity_analyzer()
+    sensitivity_df = analyzer.compute_parameter_sensitivity_scores(results_by_params)
+
+    # 生成3D图
+    output_dir = Path('data/05_rqa_analysis/sensitivity_plots')
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f'3d_space_{feature}.html'
+
+    analyzer.plot_3d_parameter_space(
+        sensitivity_df,
+        feature,
+        output_path,
+        x_param,
+        y_param,
+        z_metric,
+        color_param
+    )
+
+    return jsonify({
+        'success': True,
+        'html_path': f'/api/m05/sensitivity/html/{output_path.name}'
+    })
+
+
+@m05_bp.route('/sensitivity/plot-heatmap', methods=['POST'])
+@handle_api_errors
+def plot_parameter_heatmap() -> Response:
+    """
+    生成参数-特征敏感性热图
+    """
+    data = request.get_json()
+    metric = data.get('metric', 'overall_score')
+
+    # 计算敏感性评分
+    results_base_dir = Path('data/05_rqa_analysis/results')
+    results_by_params = []
+
+    for param_dir in results_base_dir.iterdir():
+        if not param_dir.is_dir():
+            continue
+        enriched_path = param_dir / 'step3_feature_enrichment' / 'enriched_features.csv'
+        if enriched_path.exists():
+            try:
+                dir_name = param_dir.name
+                parts = dir_name.split('_')
+                params = {
+                    'm': int(parts[0][1:]),
+                    'tau': int(parts[1][3:]),
+                    'eps': float(parts[2][3:]),
+                    'lmin': int(parts[3][4:])
+                }
+                results_by_params.append({
+                    'params': params,
+                    'enriched_features_path': str(enriched_path)
+                })
+            except (IndexError, ValueError):
+                continue
+
+    analyzer = get_sensitivity_analyzer()
+    sensitivity_df = analyzer.compute_parameter_sensitivity_scores(results_by_params)
+
+    # 生成热图
+    output_dir = Path('data/05_rqa_analysis/sensitivity_plots')
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f'heatmap_{metric}.html'
+
+    analyzer.plot_parameter_heatmap(sensitivity_df, output_path, metric)
+
+    return jsonify({
+        'success': True,
+        'html_path': f'/api/m05/sensitivity/html/{output_path.name}'
+    })
+
+
+@m05_bp.route('/sensitivity/html/<path:filename>', methods=['GET'])
+def serve_sensitivity_html(filename: str) -> Response:
+    """
+    提供敏感性分析HTML文件
+    """
+    html_dir = Path('data/05_rqa_analysis/sensitivity_plots')
+    file_path = html_dir / filename
+
+    if not file_path.exists():
+        return jsonify({'error': 'File not found'}), 404
+
+    return send_file(file_path, mimetype='text/html')

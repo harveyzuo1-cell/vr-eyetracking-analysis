@@ -17,10 +17,16 @@ import {
 import {
   ThunderboltOutlined, LineChartOutlined, BarChartOutlined,
   FundOutlined, InfoCircleOutlined, RocketOutlined,
-  FireOutlined, ExperimentOutlined, UserOutlined
+  FireOutlined, ExperimentOutlined, UserOutlined, RiseOutlined, PictureOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
+import {
+  ResponsiveContainer, BarChart, ScatterChart, Bar, Scatter,
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell, ReferenceLine
+} from 'recharts';
 import IndividualQueryPanel from './IndividualQueryPanel';
+import ParameterSensitivityPanel from './ParameterSensitivityPanel';
+import EnhancedVisualizationPanel from './EnhancedVisualizationPanel';
 
 const { Option } = Select;
 const { TabPane } = Tabs;
@@ -795,8 +801,348 @@ const AdvancedAnalysisPanel = () => {
         </div>
       ) : compareResults ? (
         <div>
-          <p>任务对比结果：</p>
-          <pre>{JSON.stringify(compareResults, null, 2)}</pre>
+          {/* 统计摘要 */}
+          <Row gutter={16} style={{ marginBottom: 24 }}>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="对比任务数"
+                  value={compareResults.tasks?.length || 0}
+                  suffix="个"
+                  prefix={<BarChartOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="总特征数"
+                  value={compareResults.total_features || 0}
+                  prefix={<FundOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="显著特征数"
+                  value={compareResults.significant_count || 0}
+                  prefix={<FireOutlined />}
+                  valueStyle={{ color: '#cf1322' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="显著率"
+                  value={compareResults.total_features > 0
+                    ? ((compareResults.significant_count / compareResults.total_features) * 100).toFixed(1)
+                    : 0}
+                  suffix="%"
+                  prefix={<RiseOutlined />}
+                  valueStyle={{ color: '#3f8600' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {/* RQA参数信息 */}
+          <Card title="RQA参数配置" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={[16, 16]}>
+              <Col span={6}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="嵌入维度 (m)">{compareResults.params?.m}</Descriptions.Item>
+                </Descriptions>
+              </Col>
+              <Col span={6}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="时间延迟 (tau)">{compareResults.params?.tau}</Descriptions.Item>
+                </Descriptions>
+              </Col>
+              <Col span={6}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="递归阈值 (eps)">{compareResults.params?.eps}</Descriptions.Item>
+                </Descriptions>
+              </Col>
+              <Col span={6}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="最小线长 (lmin)">{compareResults.params?.lmin}</Descriptions.Item>
+                </Descriptions>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* 显著特征列表 */}
+          {compareResults.significant_features && compareResults.significant_features.length > 0 && (
+            <Card title={`显著特征列表 (p < 0.05)`} size="small" style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {compareResults.significant_features.map(feature => (
+                  <Tag key={feature} color="red" style={{ marginBottom: 4 }}>
+                    {feature.toUpperCase()}
+                  </Tag>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* 任务对比详细表格 */}
+          <Card title="任务间特征对比 (Task-wise Feature Comparison)" style={{ marginBottom: 16 }}>
+            <Table
+              dataSource={compareResults.comparison_details?.map((item, idx) => ({
+                key: idx,
+                ...item
+              }))}
+              columns={[
+                {
+                  title: 'RQA特征',
+                  dataIndex: 'feature',
+                  key: 'feature',
+                  fixed: 'left',
+                  width: 120,
+                  render: (text) => (
+                    <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>
+                      {text.toUpperCase()}
+                    </span>
+                  )
+                },
+                {
+                  title: 'F统计量',
+                  dataIndex: 'f_stat',
+                  key: 'f_stat',
+                  width: 100,
+                  sorter: (a, b) => a.f_stat - b.f_stat,
+                  render: (val) => (
+                    <span style={{ fontWeight: 500, color: val > 50 ? '#cf1322' : val > 20 ? '#fa8c16' : '#000' }}>
+                      {val?.toFixed(2)}
+                    </span>
+                  )
+                },
+                {
+                  title: 'p值',
+                  dataIndex: 'p_value',
+                  key: 'p_value',
+                  width: 100,
+                  sorter: (a, b) => a.p_value - b.p_value,
+                  render: (val) => {
+                    if (val < 0.001) return <span style={{ color: '#cf1322', fontWeight: 'bold' }}>{'< 0.001 ***'}</span>;
+                    if (val < 0.01) return <span style={{ color: '#fa8c16', fontWeight: 'bold' }}>{val.toFixed(4)} **</span>;
+                    if (val < 0.05) return <span style={{ color: '#faad14', fontWeight: 500 }}>{val.toFixed(4)} *</span>;
+                    return <span>{val.toFixed(4)}</span>;
+                  }
+                },
+                {
+                  title: '显著性',
+                  dataIndex: 'significant',
+                  key: 'significant',
+                  width: 80,
+                  filters: [
+                    { text: '显著', value: true },
+                    { text: '不显著', value: false }
+                  ],
+                  onFilter: (value, record) => record.significant === value,
+                  render: (val) => (
+                    val ?
+                      <Tag color="red">显著</Tag> :
+                      <Tag color="default">不显著</Tag>
+                  )
+                },
+                ...compareResults.tasks?.map(task => ({
+                  title: `${task.toUpperCase()}`,
+                  key: `task_${task}`,
+                  width: 140,
+                  children: [
+                    {
+                      title: '均值',
+                      dataIndex: ['task_means', task, 'mean'],
+                      key: `${task}_mean`,
+                      width: 70,
+                      render: (val) => val?.toFixed(4) || '-'
+                    },
+                    {
+                      title: '标准差',
+                      dataIndex: ['task_means', task, 'std'],
+                      key: `${task}_std`,
+                      width: 70,
+                      render: (val) => val ? `±${val.toFixed(4)}` : '-'
+                    }
+                  ]
+                })) || []
+              ]}
+              scroll={{ x: 'max-content' }}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total) => `共 ${total} 个特征`
+              }}
+              size="small"
+              bordered
+            />
+          </Card>
+
+          {/* 可视化图表部分 */}
+          <Row gutter={16}>
+            {/* F统计量分布图 */}
+            <Col span={12}>
+              <Card title="F统计量分布 (F-statistic Distribution)" size="small">
+                <div style={{ height: 300 }}>
+                  {(() => {
+                    const sortedData = [...(compareResults.comparison_details || [])]
+                      .sort((a, b) => b.f_stat - a.f_stat)
+                      .slice(0, 15); // Top 15特征
+
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={sortedData} layout="vertical" margin={{ left: 100, right: 20, top: 10, bottom: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" />
+                          <YAxis
+                            type="category"
+                            dataKey="feature"
+                            tickFormatter={(val) => val.toUpperCase()}
+                            style={{ fontSize: 12 }}
+                          />
+                          <Tooltip
+                            formatter={(value) => value.toFixed(2)}
+                            contentStyle={{ fontSize: 12 }}
+                          />
+                          <Bar dataKey="f_stat" name="F统计量">
+                            {sortedData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.significant ? '#cf1322' : '#d9d9d9'}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
+                </div>
+              </Card>
+            </Col>
+
+            {/* p值分布图 */}
+            <Col span={12}>
+              <Card title="p值分布 (p-value Distribution)" size="small">
+                <div style={{ height: 300 }}>
+                  {(() => {
+                    const data = compareResults.comparison_details?.map(item => ({
+                      feature: item.feature,
+                      negLogP: -Math.log10(item.p_value), // 转换为-log10(p)
+                      significant: item.significant
+                    })).sort((a, b) => b.negLogP - a.negLogP).slice(0, 15) || [];
+
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={data} layout="vertical" margin={{ left: 100, right: 20, top: 10, bottom: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" label={{ value: '-log₁₀(p)', position: 'insideBottom', offset: -5 }} />
+                          <YAxis
+                            type="category"
+                            dataKey="feature"
+                            tickFormatter={(val) => val.toUpperCase()}
+                            style={{ fontSize: 12 }}
+                          />
+                          <Tooltip
+                            formatter={(value) => `${value.toFixed(2)} (-log10 scale)`}
+                            contentStyle={{ fontSize: 12 }}
+                          />
+                          <ReferenceLine x={1.3} stroke="#faad14" strokeDasharray="3 3" label="p=0.05" />
+                          <Bar dataKey="negLogP" name="-log₁₀(p)">
+                            {data.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.significant ? '#1890ff' : '#d9d9d9'}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
+                </div>
+              </Card>
+            </Col>
+          </Row>
+
+          {/* 任务均值热力图 */}
+          <Card title="任务均值热力图 (Task Mean Heatmap)" style={{ marginTop: 16 }} size="small">
+            <div style={{ height: 400, overflowY: 'auto' }}>
+              {(() => {
+                // 准备热力图数据
+                const heatmapData = [];
+                compareResults.comparison_details?.forEach(item => {
+                  compareResults.tasks?.forEach(task => {
+                    const mean = item.task_means?.[task]?.mean;
+                    if (mean !== undefined && mean !== null) {
+                      heatmapData.push({
+                        feature: item.feature.toUpperCase(),
+                        task: task.toUpperCase(),
+                        value: mean
+                      });
+                    }
+                  });
+                });
+
+                // 按显著性排序特征
+                const sortedFeatures = [...new Set(heatmapData.map(d => d.feature))];
+
+                return (
+                  <ResponsiveContainer width="100%" height={Math.max(400, sortedFeatures.length * 25)}>
+                    <ScatterChart margin={{ left: 100, right: 50, top: 20, bottom: 60 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        type="category"
+                        dataKey="task"
+                        name="任务"
+                        allowDuplicatedCategory={false}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="feature"
+                        name="特征"
+                        allowDuplicatedCategory={false}
+                      />
+                      <Tooltip
+                        cursor={{ strokeDasharray: '3 3' }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload[0]) {
+                            const data = payload[0].payload;
+                            return (
+                              <div style={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                padding: '8px 12px',
+                                border: '1px solid #d9d9d9',
+                                borderRadius: 4,
+                                fontSize: 12
+                              }}>
+                                <p style={{ margin: 0, fontWeight: 'bold' }}>{data.feature}</p>
+                                <p style={{ margin: '4px 0 0 0' }}>任务: {data.task}</p>
+                                <p style={{ margin: '4px 0 0 0' }}>均值: {data.value.toFixed(4)}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Scatter data={heatmapData} fill="#8884d8">
+                        {heatmapData.map((entry, index) => {
+                          // 根据值的大小设置颜色
+                          const maxVal = Math.max(...heatmapData.map(d => d.value));
+                          const minVal = Math.min(...heatmapData.map(d => d.value));
+                          const normalized = (entry.value - minVal) / (maxVal - minVal);
+                          const color = `rgb(${Math.floor(255 * (1 - normalized))}, ${Math.floor(100 + 155 * normalized)}, ${Math.floor(255 * (1 - normalized))})`;
+                          return <Cell key={`cell-${index}`} fill={color} />;
+                        })}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
+          </Card>
         </div>
       ) : (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#999' }}>
@@ -843,6 +1189,26 @@ const AdvancedAnalysisPanel = () => {
               </span>
             ),
             children: renderTaskComparison()
+          },
+          {
+            key: 'param-sensitivity',
+            label: (
+              <span>
+                <ExperimentOutlined />
+                参数敏感性分析
+              </span>
+            ),
+            children: <ParameterSensitivityPanel />
+          },
+          {
+            key: 'enhanced-viz',
+            label: (
+              <span>
+                <PictureOutlined />
+                可视化分析(新)
+              </span>
+            ),
+            children: <EnhancedVisualizationPanel />
           },
           {
             key: 'individual-query',

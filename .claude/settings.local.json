@@ -37,7 +37,12 @@
       "Bash(curl -s http://127.0.0.1:9090/api/m05/tasks/status/task_20251008_145727)",
       "Bash(curl -s http://127.0.0.1:9090/api/m05/tasks/list)",
       "Bash(git -C \"c:\\Users\\asino\\Downloads\\az - 副本 (11)\" status)",
-      "Bash(curl -s -X POST http://127.0.0.1:9090/api/m05/params/generate -H \"Content-Type: application/json\" -d \"{\"\"m_range\"\":{\"\"start\"\":1,\"\"end\"\":4,\"\"step\"\":1},\"\"tau_range\"\":{\"\"start\"\":1,\"\"end\"\":8,\"\"step\"\":1},\"\"eps_range\"\":{\"\"start\"\":0.050,\"\"end\"\":0.100,\"\"step\"\":0.005},\"\"lmin_range\"\":{\"\"start\"\":2,\"\"end\"\":3,\"\"step\"\":1}}\")"
+      "Bash(curl -s -X POST http://127.0.0.1:9090/api/m05/params/generate -H \"Content-Type: application/json\" -d \"{\"\"m_range\"\":{\"\"start\"\":1,\"\"end\"\":4,\"\"step\"\":1},\"\"tau_range\"\":{\"\"start\"\":1,\"\"end\"\":8,\"\"step\"\":1},\"\"eps_range\"\":{\"\"start\"\":0.050,\"\"end\"\":0.100,\"\"step\"\":0.005},\"\"lmin_range\"\":{\"\"start\"\":2,\"\"end\"\":3,\"\"step\"\":1}}\")",
+      "Bash(curl -s http://127.0.0.1:9090/api/health)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(copy api.py api_backup.py)",
+      "Bash(del \"c:\\Users\\asino\\Downloads\\az - 副本 (11)\\new_project\\frontend\\src\\components\\Module05\\EnhancedVisualizationPanel.jsx\")"
     ],
     "deny": [],
     "ask": []

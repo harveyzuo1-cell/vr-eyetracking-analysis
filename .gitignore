@@ -118,4 +118,5 @@ runs/
 !.gitignore
 !README.md
 !requirements.txt
-!package.json
+!package.jsonnul
+**/nul
