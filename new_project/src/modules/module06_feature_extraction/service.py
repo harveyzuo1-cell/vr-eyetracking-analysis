@@ -200,6 +200,15 @@ class FeatureExtractionService:
         # 过滤指定分组
         df = df[df['group'].isin(groups)]
 
+        # **重要**: 过滤掉没有MMSE分数的受试者（如jojo）
+        # 这样v1数据集将只保留有MMSE的300个样本(control=100, mci=100, ad=100)
+        if 'mmse_total_score' in df.columns:
+            before_count = len(df)
+            df = df[df['mmse_total_score'].notna()]
+            after_count = len(df)
+            if before_count != after_count:
+                logger.info(f"过滤MMSE缺失样本: {before_count} → {after_count} (-{before_count - after_count}条)")
+
         # 移除MMSE相关列（不作为特征）
         columns_to_drop = [col for col in df.columns if 'mmse' in col.lower()]
         df = df.drop(columns=columns_to_drop, errors='ignore')
