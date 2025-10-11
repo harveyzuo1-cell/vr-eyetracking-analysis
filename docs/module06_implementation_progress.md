@@ -145,55 +145,155 @@ if 'mmse_total_score' in df.columns:
 
 ---
 
-## ⏳ 待实现组件
+## ✅ 已完成的组件（续）
 
-### 4. Service层集成（预计1天）
+### 4. Service层集成 ✅
 📄 `src/modules/module06_feature_extraction/service.py`
 
-**待添加**:
+**功能**: 完整的混合特征选择Service层实现
+
 ```python
 class FeatureExtractionService:
-    def compute_hybrid_selection(self, data_version='v1', mode='fast'):
+    def compute_hybrid_selection(self, data_version='v1', mode='fast', groups=None):
         """
+        运行混合特征选择（三阶段）
+
         mode='fast': 仅阶段1+2 (~2分钟)
         mode='precise': 完整三阶段 (~10分钟)
         """
         # 1. 加载所有候选特征（Module04 + Module05）
-        X, y, groups, feature_names = self._load_all_features(data_version)
+        X, y, feature_names, groups_series = self._load_all_features(data_version, groups)
 
         # 2. 初始化HybridFeatureSelector
-        selector = HybridFeatureSelector(X, y, feature_names, groups)
+        selector = HybridFeatureSelector(X, y, feature_names, groups_series)
 
-        # 3. 运行阶段1+2（或完整三阶段）
-        # 4. 对比Baseline（ANOVA方法）
-        # 5. 缓存结果
-        # 6. 返回报告
+        # 3. 运行阶段1: Filter预筛选
+        stage1_results = selector.run_stage1_filter(top_k=15)
+
+        # 4. 运行阶段2: 回归验证
+        stage2_results = selector.run_stage2_validation(
+            threshold_corr=0.25, threshold_vif=5.0
+        )
+
+        # 5. 运行阶段3（仅在precise模式下）
+        if mode == 'precise':
+            stage3_results = selector.run_stage3_wrapper(final_k=10, cv_folds=5)
+
+        # 6. 对比Baseline（ANOVA方法）
+        baseline_comparison = self._compare_with_baseline(...)
+
+        # 7. 缓存结果并返回报告
+        return report
+
+    def _load_all_features(self, data_version, groups):
+        """加载Module04 + Module05所有候选特征"""
+        # 1. 加载Module04特征（9个）
+        # 2. 加载Module05 RQA特征（18个）
+        # 3. 合并并按subject_id聚合
+        # 4. 过滤MMSE缺失样本
+        return X, y, feature_names, groups_series
+
+    def _compare_with_baseline(self, X, y, feature_names, groups, hybrid_features):
+        """对比ANOVA Baseline与Hybrid方法"""
+        # 1. 使用ANOVA选择Top-K特征
+        # 2. 使用MLP进行5折交叉验证
+        # 3. 计算R²提升
+        return baseline_comparison
 ```
+
+**特点**:
+- ✅ 完整的三阶段流程集成
+- ✅ 支持fast和precise两种模式
+- ✅ 自动加载Module04 + Module05特征
+- ✅ Baseline对比（ANOVA vs Hybrid）
+- ✅ 结果缓存到JSON文件
+- ✅ 详细的日志记录和执行时间跟踪
 
 ---
 
-### 5. API路由（预计0.5天）
+### 5. API路由 ✅
 📄 `src/modules/module06_feature_extraction/api.py`
 
-**待添加**:
+**功能**: 混合特征选择的HTTP API接口
+
 ```python
 @m06_bp.route('/hybrid/run', methods=['POST'])
+@handle_api_errors
 def run_hybrid_selection():
-    """运行混合特征选择"""
-    data = request.get_json()
-    mode = data.get('mode', 'fast')  # 'fast' | 'precise'
+    """
+    运行混合特征选择
 
-    service = FeatureExtractionService()
-    report = service.compute_hybrid_selection(mode=mode)
+    Request Body:
+    {
+        "data_version": "v1",
+        "mode": "fast",  // 'fast' (~2分钟) or 'precise' (~10分钟)
+        "groups": ["control", "mci", "ad"]  // 可选
+    }
 
-    return jsonify({'success': True, 'data': report})
+    Response:
+    {
+        "success": true,
+        "data": {
+            "mode": "fast",
+            "sample_count": 300,
+            "initial_feature_count": 27,
+            "stage1_filter": {...},
+            "stage2_validation": {...},
+            "stage3_wrapper": {...},  // 仅在precise模式
+            "final_features": [...],
+            "baseline_comparison": {...},
+            "total_execution_time": 120.5
+        }
+    }
+    """
+    ...
 
 
 @m06_bp.route('/hybrid/compare', methods=['GET'])
+@handle_api_errors
 def compare_methods():
-    """对比不同方法（ANOVA vs Hybrid）"""
-    pass
+    """
+    对比ANOVA vs Hybrid方法
+
+    Query Parameters:
+    - data_version: 数据版本，默认v1
+    - mode: 混合模式 (fast/precise)，默认fast
+
+    Response:
+    {
+        "success": true,
+        "data": {
+            "baseline": {
+                "method": "ANOVA",
+                "features": [...],
+                "r2_mean": 0.45,
+                "r2_std": 0.08
+            },
+            "hybrid": {
+                "method": "Hybrid (Filter+Validation+Wrapper)",
+                "features": [...],
+                "r2_mean": 0.52,
+                "r2_std": 0.07
+            },
+            "improvement": {
+                "absolute": 0.07,
+                "relative_pct": 15.6
+            }
+        }
+    }
+    """
+    ...
 ```
+
+**特点**:
+- ✅ RESTful API设计
+- ✅ 完整的请求/响应文档
+- ✅ 错误处理和异常降级
+- ✅ 从缓存读取结果
+
+---
+
+## ⏳ 待实现组件
 
 ---
 
@@ -224,33 +324,32 @@ def compare_methods():
 | ValidationUtils | ✅ 完成 | 100% |
 | WrapperMethods | ✅ 完成 | 100% |
 | HybridFeatureSelector | ✅ 完成 | 100% |
-| Service层集成 | ⏳ 待实现 | 0% |
-| API路由 | ⏳ 待实现 | 0% |
+| Service层集成 | ✅ 完成 | 100% |
+| API路由 | ✅ 完成 | 100% |
 | 前端UI | ⏳ 待实现 | 0% |
 
-**总体完成度**: 约 **70%** （后端核心完成，待集成API和前端）
+**总体完成度**: 约 **85%** （后端完整实现完成，待前端UI）
 
 ---
 
 ## 🚀 下一步计划
 
-### Phase 3: 完整集成（预计2-3天）
+### Phase 4: 前端UI开发（预计1-2天）
 
-**Day 1**: Service层集成
-- [ ] 实现`compute_hybrid_selection()`
-- [ ] 实现数据加载`_load_all_features()`
-- [ ] 实现Baseline对比
-- [ ] 单元测试
+**Day 1**: 前端主面板和视图组件
+- [ ] 创建`HybridSelectionPanel.jsx`主面板
+  - 模式选择：快速模式 vs 精确模式
+  - 运行按钮和进度展示
+  - 三阶段结果可视化
+- [ ] 创建阶段视图组件
+  - `Stage1FilterView.jsx` - Filter预筛选结果
+  - `Stage2ValidationView.jsx` - 相关性和VIF分析
+  - `Stage3WrapperView.jsx` - Wrapper方法对比
 
-**Day 2**: API路由和测试
-- [ ] 添加`/api/m06/hybrid/run`
-- [ ] 添加`/api/m06/hybrid/compare`
-- [ ] Postman测试
-
-**Day 3**: 前端UI
-- [ ] `HybridSelectionPanel.jsx`主面板
-- [ ] 三阶段视图组件
-- [ ] 对比可视化
+**Day 2**: 测试和优化
+- [ ] 端到端测试（API + 前端）
+- [ ] 性能优化和UI调整
+- [ ] 文档完善
 
 ---
 
