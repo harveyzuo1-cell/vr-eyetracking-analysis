@@ -28,11 +28,14 @@ const ResultsViewer = () => {
   const loadBatches = useCallback(async () => {
     try {
       const response = await axios.get('/api/m05/batches/list');
-      if (response.data.success) {
-        setBatches(response.data.batches);
+      if (response.data.success && response.data.data && Array.isArray(response.data.data.batches)) {
+        setBatches(response.data.data.batches);
+      } else {
+        setBatches([]);
       }
     } catch (error) {
       console.error('加载批次列表失败:', error);
+      setBatches([]);
     }
   }, []);
 
@@ -45,13 +48,20 @@ const ResultsViewer = () => {
 
       const response = await axios.get(url);
 
-      if (response.data.success) {
-        setResults(response.data.completed_results);
+      // 支持两种响应格式：
+      // 1. { data: { completed_results: [...] } }
+      // 2. { completed_results: [...] }
+      const results = response.data?.data?.completed_results || response.data?.completed_results;
+
+      if (Array.isArray(results)) {
+        setResults(results);
       } else {
-        message.error('加载结果列表失败');
+        setResults([]);
+        console.warn('API返回的数据格式不正确:', response.data);
       }
     } catch (error) {
       console.error('加载结果列表失败:', error);
+      setResults([]);
       message.error('加载结果列表失败: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);

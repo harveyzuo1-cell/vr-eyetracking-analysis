@@ -67,15 +67,12 @@ const FeatureExtractionPanel = () => {
             <Col span={12}>
               <Card type="inner" size="small">
                 <Space direction="vertical" size="small">
-                  <Text strong>Module05 特征池（6个 RQA 指标）</Text>
-                  <Text type="secondary">递归量化分析特征</Text>
-                  <ul style={{ margin: 0, paddingLeft: 20 }}>
-                    <li>RR-2D-XY: 二维递归率（XY联合）</li>
-                    <li>RR-1D-X: 一维递归率（X方向）</li>
-                    <li>DET-2D-XY: 二维确定性</li>
-                    <li>DET-1D-X: 一维确定性</li>
-                    <li>ENT-2D-XY: 二维熵</li>
-                    <li>RQA_COMPLEXITY_2D: 二维复杂度</li>
+                  <Text strong>Module05 特征池（11个 RQA 指标）</Text>
+                  <Text type="secondary">递归量化分析特征 → 选择 Top-6</Text>
+                  <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12 }}>
+                    <li><strong>基础RQA（6个）:</strong> RR-1D-x, DET-1D-x, ENT-1D-x, RR-2D-xy, DET-2D-xy, ENT-2D-xy</li>
+                    <li><strong>衍生特征（5个）:</strong> rqa_complexity_1d, rqa_complexity_2d, rqa_diff_rr, rqa_diff_det, rqa_diff_ent</li>
+                    <li style={{ color: '#ff4d4f', marginTop: 4 }}><strong>策略A:</strong> 通过敏感度分析从11个特征中选择最显著的6个</li>
                   </ul>
                 </Space>
               </Card>

@@ -24,8 +24,8 @@ const SensitivityAnalysisPanel = () => {
     setLoading(true);
     try {
       const endpoint = module === 'm04'
-        ? '/api/m06/sensitivity/m04'
-        : '/api/m06/sensitivity/m05';
+        ? '/api/m06/m04/sensitivity/compute'
+        : '/api/m06/m05/sensitivity/compute';
 
       const params = module === 'm04'
         ? { data_version: dataVersion, use_cache: true }
@@ -186,11 +186,17 @@ const SensitivityAnalysisPanel = () => {
     },
   ];
 
-  // 准备表格数据
-  const tableData = results?.ranked_features?.map((item, index) => ({
+  // 准备表格数据 - 转换后端字段到前端格式
+  const tableData = results?.all_features?.map((item, index) => ({
     key: index,
-    rank: index + 1,
-    ...item,
+    rank: item.rank || index + 1,
+    feature: item.feature_name,
+    score: item.sensitivity_score,
+    f_value: item.f_statistic,
+    eta_squared: item.eta_squared,
+    cohens_d: item.avg_cohens_d,
+    p_value: item.p_value,
+    cv: item.avg_cv,
   })) || [];
 
   return (
@@ -232,14 +238,14 @@ const SensitivityAnalysisPanel = () => {
             <Col span={6}>
               <Statistic
                 title="总特征数"
-                value={results.total_features}
+                value={results.summary?.total_features_analyzed || results.total_features || 0}
                 suffix="个"
               />
             </Col>
             <Col span={6}>
               <Statistic
                 title="样本数量"
-                value={results.sample_count || 'N/A'}
+                value={results.summary?.total_samples || results.sample_count || 'N/A'}
                 suffix="个"
               />
             </Col>
@@ -253,7 +259,7 @@ const SensitivityAnalysisPanel = () => {
             <Col span={6}>
               <Statistic
                 title="数据版本"
-                value={results.data_version || 'N/A'}
+                value={results.params?.data_version || results.data_version || 'N/A'}
                 valueStyle={{ fontSize: 16 }}
               />
             </Col>

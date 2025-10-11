@@ -37,18 +37,26 @@ const VisualizationPanel = () => {
   const loadAvailableParams = async () => {
     try {
       const response = await axios.get('/api/m05/results/completed');
-      if (response.data.success && response.data.completed_results) {
-        setAvailableParams(response.data.completed_results);
+
+      // 支持两种响应格式：
+      // 1. { data: { completed_results: [...] } }
+      // 2. { completed_results: [...] }
+      const results = response.data?.data?.completed_results || response.data?.completed_results;
+
+      if (Array.isArray(results) && results.length > 0) {
+        setAvailableParams(results);
 
         // 如果有已完成的结果，默认选择第一个
-        if (response.data.completed_results.length > 0) {
-          const firstParam = response.data.completed_results[0];
-          const signature = `m${firstParam.m}_tau${firstParam.tau}_eps${firstParam.eps}_lmin${firstParam.lmin}`;
-          setSelectedSignature(signature);
-        }
+        const firstParam = results[0];
+        const signature = `m${firstParam.m}_tau${firstParam.tau}_eps${firstParam.eps}_lmin${firstParam.lmin}`;
+        setSelectedSignature(signature);
+      } else {
+        setAvailableParams([]);
+        console.warn('没有找到已完成的RQA分析结果');
       }
     } catch (error) {
       console.error('加载已完成结果失败:', error);
+      setAvailableParams([]);
     }
   };
 

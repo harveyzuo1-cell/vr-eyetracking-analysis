@@ -19,15 +19,24 @@ logger = setup_logger(__name__)
 class M05FeatureAggregator:
     """Module05 RQA特征聚合器"""
 
-    # Module05 RQA特征分类
-    # 1D特征: 基于x轴(水平方向)的递归
-    RQA_FEATURES_1D_X = ['rr-1d-x', 'det-1d-x', 'ent-1d-x', 'lam-1d-x', 'l_mean-1d-x']
+    # Module05 RQA特征分类（基于实际enriched_features.csv）
+    # 基础1D特征: 基于x轴(水平方向)的递归
+    RQA_FEATURES_1D_X = ['rr-1d-x', 'det-1d-x', 'ent-1d-x']
 
-    # 2D特征: 基于xy二维空间的递归
-    RQA_FEATURES_2D_XY = ['rr-2d-xy', 'det-2d-xy', 'ent-2d-xy', 'lam-2d-xy', 'l_mean-2d-xy']
+    # 基础2D特征: 基于xy二维空间的递归
+    RQA_FEATURES_2D_XY = ['rr-2d-xy', 'det-2d-xy', 'ent-2d-xy']
 
-    # 所有RQA核心特征
-    ALL_RQA_FEATURES = RQA_FEATURES_1D_X + RQA_FEATURES_2D_XY
+    # 衍生/复合特征
+    RQA_FEATURES_DERIVED = [
+        'rqa_complexity_1d',  # 一维复杂度
+        'rqa_complexity_2d',  # 二维复杂度
+        'rqa_diff_rr',        # 递归率差异
+        'rqa_diff_det',       # 确定性差异
+        'rqa_diff_ent'        # 熵差异
+    ]
+
+    # 所有RQA特征（11个）
+    ALL_RQA_FEATURES = RQA_FEATURES_1D_X + RQA_FEATURES_2D_XY + RQA_FEATURES_DERIVED
 
     def __init__(self):
         """初始化聚合器"""
