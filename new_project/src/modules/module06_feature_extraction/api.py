@@ -430,3 +430,154 @@ def clear_cache():
         'message': result['message'],
         'cleared_files': result.get('cleared_files', [])
     })
+
+
+# ============================
+# 混合特征选择 API
+# ============================
+
+@m06_bp.route('/hybrid/run', methods=['POST'])
+@handle_api_errors
+def run_hybrid_selection():
+    """
+    运行混合特征选择（三阶段）
+
+    Request Body:
+        {
+            "data_version": "v1",
+            "mode": "fast",  // 'fast' (阶段1+2, ~2分钟) or 'precise' (完整三阶段, ~10分钟)
+            "groups": ["control", "mci", "ad"]  // 可选
+        }
+
+    Response:
+        {
+            "success": true,
+            "data": {
+                "mode": "fast",
+                "data_version": "v1",
+                "sample_count": 300,
+                "initial_feature_count": 27,
+                "stage1_filter": {
+                    "top_features": [...],
+                    "execution_time": 60.5
+                },
+                "stage2_validation": {
+                    "filtered_features": [...],
+                    "execution_time": 30.2
+                },
+                "stage3_wrapper": {
+                    "final_features": [...],
+                    "best_method": "RFE",
+                    "execution_time": 600.5
+                },
+                "final_features": [...],
+                "baseline_comparison": {
+                    "baseline_method": "ANOVA",
+                    "baseline_r2_mean": 0.45,
+                    "hybrid_r2_mean": 0.52,
+                    "improvement": {
+                        "absolute": 0.07,
+                        "relative_pct": 15.6
+                    }
+                },
+                "total_execution_time": 690.8,
+                "timestamp": "2025-10-12T..."
+            }
+        }
+    """
+    data = request.get_json() or {}
+
+    data_version = data.get('data_version', 'v1')
+    mode = data.get('mode', 'fast')
+    groups = data.get('groups')
+
+    service = get_service()
+    result = service.compute_hybrid_selection(
+        data_version=data_version,
+        mode=mode,
+        groups=groups
+    )
+
+    return jsonify({
+        'success': True,
+        'data': result
+    })
+
+
+@m06_bp.route('/hybrid/compare', methods=['GET'])
+@handle_api_errors
+def compare_methods():
+    """
+    对比不同特征选择方法（ANOVA vs Hybrid）
+
+    Query Parameters:
+        - data_version: 数据版本，默认v1
+        - mode: 混合模式 (fast/precise)，默认fast
+
+    Response:
+        {
+            "success": true,
+            "data": {
+                "baseline": {
+                    "method": "ANOVA",
+                    "features": [...],
+                    "r2_mean": 0.45,
+                    "r2_std": 0.08
+                },
+                "hybrid": {
+                    "method": "Hybrid (Filter+Validation+Wrapper)",
+                    "features": [...],
+                    "r2_mean": 0.52,
+                    "r2_std": 0.07
+                },
+                "improvement": {
+                    "absolute": 0.07,
+                    "relative_pct": 15.6
+                }
+            }
+        }
+    """
+    data_version = request.args.get('data_version', default='v1', type=str)
+    mode = request.args.get('mode', default='fast', type=str)
+
+    service = get_service()
+
+    # 从缓存加载混合特征选择结果
+    import json
+    from pathlib import Path
+
+    cache_file = service.cache_dir / f'hybrid_selection_{mode}_{data_version}.json'
+
+    if not cache_file.exists():
+        return jsonify({
+            'success': False,
+            'error': f'混合特征选择结果不存在。请先调用 POST /api/m06/hybrid/run',
+            'hint': f'curl -X POST http://127.0.0.1:9090/api/m06/hybrid/run -H "Content-Type: application/json" -d \'{{"mode":"{mode}","data_version":"{data_version}"}}\''
+        }), 404
+
+    with open(cache_file, 'r', encoding='utf-8') as f:
+        hybrid_report = json.load(f)
+
+    baseline_comparison = hybrid_report.get('baseline_comparison', {})
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'baseline': {
+                'method': baseline_comparison.get('baseline_method', 'ANOVA'),
+                'features': baseline_comparison.get('baseline_features', []),
+                'r2_mean': baseline_comparison.get('baseline_r2_mean', 0.0),
+                'r2_std': baseline_comparison.get('baseline_r2_std', 0.0)
+            },
+            'hybrid': {
+                'method': 'Hybrid (Filter+Validation+Wrapper)',
+                'features': baseline_comparison.get('hybrid_features', []),
+                'r2_mean': baseline_comparison.get('hybrid_r2_mean', 0.0),
+                'r2_std': baseline_comparison.get('hybrid_r2_std', 0.0)
+            },
+            'improvement': baseline_comparison.get('improvement', {}),
+            'mode': mode,
+            'data_version': data_version,
+            'timestamp': hybrid_report.get('timestamp')
+        }
+    })

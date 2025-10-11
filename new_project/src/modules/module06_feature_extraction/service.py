@@ -12,6 +12,7 @@ from typing import Dict, List, Optional
 
 from src.utils.logger import setup_logger
 from .sensitivity_analyzer import SensitivityAnalyzer
+from .hybrid_selector import HybridFeatureSelector
 from .utils import validate_strategy, validate_groups, validate_data_version
 
 logger = setup_logger(__name__)
@@ -817,6 +818,299 @@ class FeatureExtractionService:
             'subject_id': subject_id,
             'group': group,
             'features': combined_features
+        }
+
+    # ========================================
+    # 混合特征选择 (Hybrid Feature Selection)
+    # ========================================
+
+    def compute_hybrid_selection(self, data_version: str = 'v1',
+                                 mode: str = 'fast',
+                                 groups: Optional[List[str]] = None) -> Dict:
+        """
+        运行混合特征选择（三阶段）
+
+        Args:
+            data_version: 数据版本
+            mode: 运行模式
+                - 'fast': 仅阶段1+2（~2分钟）- Filter + Validation
+                - 'precise': 完整三阶段（~10分钟）- Filter + Validation + Wrapper
+            groups: 分组列表
+
+        Returns:
+            完整的混合特征选择报告
+        """
+        import time
+        import numpy as np
+
+        logger.info("=" * 60)
+        logger.info(f"开始混合特征选择 (mode={mode}, data_version={data_version})")
+        logger.info("=" * 60)
+
+        start_time = time.time()
+
+        # 验证参数
+        data_version = validate_data_version(data_version)
+        groups = validate_groups(groups) if groups else ['control', 'mci', 'ad']
+
+        if mode not in ['fast', 'precise']:
+            raise ValueError(f"无效的mode: {mode}，必须是 'fast' 或 'precise'")
+
+        # 1. 加载所有候选特征（Module04 + Module05）
+        logger.info("步骤1: 加载所有候选特征...")
+        X, y, feature_names, groups_series = self._load_all_features(data_version, groups)
+
+        logger.info(f"数据加载完成: {len(X)}个样本, {len(feature_names)}个特征")
+        logger.info(f"特征分布: Module04={len([f for f in feature_names if 'm04_' in f])}, "
+                   f"Module05={len([f for f in feature_names if 'm05_' in f])}")
+
+        # 2. 初始化HybridFeatureSelector
+        selector = HybridFeatureSelector(X, y, feature_names, groups_series)
+
+        # 3. 运行阶段1: Filter预筛选
+        stage1_results = selector.run_stage1_filter(top_k=15)
+
+        # 4. 运行阶段2: 回归验证
+        stage2_results = selector.run_stage2_validation(
+            threshold_corr=0.25,
+            threshold_vif=5.0
+        )
+
+        # 5. 运行阶段3（仅在precise模式下）
+        stage3_results = None
+        if mode == 'precise':
+            stage3_results = selector.run_stage3_wrapper(
+                final_k=10,
+                cv_folds=5
+            )
+
+        # 6. 对比Baseline（ANOVA方法）
+        logger.info("步骤4: 对比Baseline（ANOVA方法）...")
+        baseline_comparison = self._compare_with_baseline(
+            X, y, feature_names, groups_series,
+            hybrid_features=stage3_results['final_features'] if stage3_results else stage2_results['filtered_features']
+        )
+
+        # 7. 生成完整报告
+        total_time = time.time() - start_time
+
+        report = {
+            'mode': mode,
+            'data_version': data_version,
+            'sample_count': len(X),
+            'initial_feature_count': len(feature_names),
+            'stage1_filter': stage1_results,
+            'stage2_validation': stage2_results,
+            'stage3_wrapper': stage3_results,
+            'final_features': stage3_results['final_features'] if stage3_results else stage2_results['filtered_features'],
+            'baseline_comparison': baseline_comparison,
+            'total_execution_time': total_time,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        # 8. 缓存结果
+        cache_file = self.cache_dir / f'hybrid_selection_{mode}_{data_version}.json'
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump(report, f, ensure_ascii=False, indent=2)
+
+        logger.info("=" * 60)
+        logger.info(f"混合特征选择完成！总耗时: {total_time:.1f}秒")
+        logger.info(f"最终特征数量: {len(report['final_features'])}")
+        logger.info(f"最终特征: {report['final_features']}")
+        logger.info("=" * 60)
+
+        return report
+
+    def _load_all_features(self, data_version: str, groups: List[str]):
+        """
+        加载所有候选特征（Module04 + Module05）
+
+        Args:
+            data_version: 数据版本
+            groups: 分组列表
+
+        Returns:
+            (X, y, feature_names, groups_series)
+            - X: 特征矩阵 (n_samples, n_features)
+            - y: 目标变量 (MMSE分数)
+            - feature_names: 特征名称列表
+            - groups_series: 分组标签
+        """
+        from src.modules.module04_event_analysis.service import EventAnalysisService
+
+        logger.info("加载Module04特征...")
+
+        # 1. 加载Module04特征
+        m04_service = EventAnalysisService()
+        m04_result = m04_service.get_feature_statistics(
+            group=None,
+            data_version=data_version,
+            velocity_threshold=40.0,
+            min_fixation_duration=100
+        )
+
+        if not m04_result.get('success'):
+            raise ValueError(f"Module04特征加载失败: {m04_result.get('error')}")
+
+        m04_df = pd.DataFrame(m04_result['features'])
+
+        # 过滤分组
+        m04_df = m04_df[m04_df['group'].isin(groups)]
+
+        # 过滤MMSE缺失样本
+        if 'mmse_total_score' in m04_df.columns:
+            before_count = len(m04_df)
+            m04_df = m04_df[m04_df['mmse_total_score'].notna()]
+            logger.info(f"过滤MMSE缺失样本: {before_count} → {len(m04_df)}")
+
+        # 提取MMSE作为目标变量
+        y = m04_df['mmse_total_score'].values
+        groups_series = m04_df['group']
+        subject_ids = m04_df['subject_id']
+
+        # 提取Module04特征列（排除元数据列）
+        meta_cols = ['subject_id', 'group', 'task_id', 'mmse_total_score']
+        m04_feature_cols = [col for col in m04_df.columns if col not in meta_cols]
+
+        # 按subject_id聚合（取5个任务的平均值）
+        m04_features_agg = m04_df.groupby('subject_id')[m04_feature_cols].mean()
+
+        # 2. 加载Module05 RQA特征
+        logger.info("加载Module05 RQA特征...")
+
+        # 使用代表性参数组合
+        param_sig = "m1_tau1_eps0.051_lmin2"
+        enriched_file = self.base_dir / f"data/05_rqa_analysis/results/{param_sig}/step3_feature_enrichment/enriched_features.csv"
+
+        m05_features_agg = None
+        if enriched_file.exists():
+            m05_df = pd.read_csv(enriched_file)
+            m05_df.columns = m05_df.columns.str.lower()
+
+            # 提取RQA特征列（排除subject_id, task_id, group等）
+            m05_meta_cols = ['subject_id', 'task_id', 'group']
+            m05_feature_cols = [col for col in m05_df.columns if col not in m05_meta_cols]
+
+            # 按subject_id聚合
+            m05_features_agg = m05_df.groupby('subject_id')[m05_feature_cols].mean()
+
+            # 添加前缀以区分来源
+            m05_features_agg.columns = [f'm05_{col}' for col in m05_features_agg.columns]
+
+            logger.info(f"Module05特征加载完成: {len(m05_feature_cols)}个特征")
+        else:
+            logger.warning(f"Module05数据文件不存在: {enriched_file}")
+
+        # 3. 合并Module04和Module05特征
+        # 添加前缀以区分来源
+        m04_features_agg.columns = [f'm04_{col}' for col in m04_features_agg.columns]
+
+        # 合并
+        if m05_features_agg is not None:
+            # 确保两个DataFrame的索引一致（都是subject_id）
+            combined_features = m04_features_agg.join(m05_features_agg, how='inner')
+        else:
+            combined_features = m04_features_agg
+
+        # 4. 对齐y和groups（因为join可能改变顺序）
+        # 重新从m04_df中提取对应的y和groups
+        aligned_data = []
+        for subject_id in combined_features.index:
+            subject_data = m04_df[m04_df['subject_id'] == subject_id].iloc[0]
+            aligned_data.append({
+                'mmse_total_score': subject_data['mmse_total_score'],
+                'group': subject_data['group']
+            })
+
+        aligned_df = pd.DataFrame(aligned_data, index=combined_features.index)
+
+        X = combined_features
+        y = pd.Series(aligned_df['mmse_total_score'].values, index=X.index)
+        groups_series = pd.Series(aligned_df['group'].values, index=X.index)
+        feature_names = X.columns.tolist()
+
+        logger.info(f"特征合并完成: {len(X)}个样本, {len(feature_names)}个特征")
+
+        return X, y, feature_names, groups_series
+
+    def _compare_with_baseline(self, X: pd.DataFrame, y: pd.Series,
+                               feature_names: List[str], groups: pd.Series,
+                               hybrid_features: List[str]) -> Dict:
+        """
+        对比混合方法与Baseline（ANOVA）方法
+
+        Args:
+            X: 完整特征矩阵
+            y: 目标变量
+            feature_names: 所有特征名称
+            groups: 分组标签
+            hybrid_features: 混合方法选择的特征
+
+        Returns:
+            对比结果
+        """
+        from sklearn.model_selection import cross_val_score
+        from sklearn.neural_network import MLPRegressor
+        from scipy.stats import rankdata
+        import numpy as np
+
+        logger.info("开始Baseline对比...")
+
+        # 1. Baseline: ANOVA方法选择Top-K特征（K与hybrid一致）
+        from .filter_methods import FilterMethods
+
+        filter_methods = FilterMethods(X, y, feature_names, groups)
+        anova_scores = filter_methods.compute_anova_scores()
+
+        # 选择Top-K（K = len(hybrid_features)）
+        k = len(hybrid_features)
+        combined_ranks = rankdata(-anova_scores, method='average')
+        baseline_features = filter_methods.get_top_features(
+            combined_ranks, top_k=k
+        )
+
+        # 2. 使用MLP进行交叉验证对比
+        mlp = MLPRegressor(
+            hidden_layer_sizes=(64, 32),
+            max_iter=1000,
+            random_state=42,
+            early_stopping=True
+        )
+
+        # Baseline性能
+        X_baseline = X[baseline_features]
+        baseline_scores = cross_val_score(
+            mlp, X_baseline, y, cv=5, scoring='r2'
+        )
+
+        # Hybrid性能
+        X_hybrid = X[hybrid_features]
+        hybrid_scores = cross_val_score(
+            mlp, X_hybrid, y, cv=5, scoring='r2'
+        )
+
+        # 3. 计算提升
+        baseline_mean = float(baseline_scores.mean())
+        hybrid_mean = float(hybrid_scores.mean())
+        absolute_improvement = hybrid_mean - baseline_mean
+        relative_improvement = (absolute_improvement / abs(baseline_mean)) * 100 if baseline_mean != 0 else 0
+
+        logger.info(f"Baseline (ANOVA): R² = {baseline_mean:.4f} ± {baseline_scores.std():.4f}")
+        logger.info(f"Hybrid: R² = {hybrid_mean:.4f} ± {hybrid_scores.std():.4f}")
+        logger.info(f"提升: {absolute_improvement:.4f} ({relative_improvement:.2f}%)")
+
+        return {
+            'baseline_method': 'ANOVA',
+            'baseline_features': baseline_features,
+            'baseline_r2_mean': baseline_mean,
+            'baseline_r2_std': float(baseline_scores.std()),
+            'hybrid_features': hybrid_features,
+            'hybrid_r2_mean': hybrid_mean,
+            'hybrid_r2_std': float(hybrid_scores.std()),
+            'improvement': {
+                'absolute': absolute_improvement,
+                'relative_pct': relative_improvement
+            }
         }
 
     # ========================================
